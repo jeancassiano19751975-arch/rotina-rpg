@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141a36">
+  <title>Rotina RPG</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <section class="col">
+    <header class="hud box">
+      <div class="lvl"><b id="lvl">1</b><span>Nível</span></div>
+      <div class="xpbox">
+        <div class="who"><b id="hname">Herói</b><span id="htitle"></span></div>
+        <div class="bar" title="XP"><i id="xpbar" style="width:0"></i></div>
+        <div class="xp-top"><b>XP</b><span id="xptext">0 / 50</span></div>
+      </div>
+      <div class="gold" title="Ouro"><span class="coin"></span><b id="gold">0</b></div>
+    </header>
+
+    <div class="scene-wrap box"><canvas id="scene" width="640" height="300" aria-label="Seu herói em ação"></canvas></div>
+
+    <div class="attrs" id="attrs"></div>
+
+    <div class="next box">
+      <div class="next-head"><span class="eyebrow" id="next-eye">Próxima missão</span><span class="muted" id="next-in"></span></div>
+      <div class="next-row"><span class="next-time" id="next-time">--:--</span><span class="next-name" id="next-name"></span></div>
+      <p class="muted" id="next-xp"></p>
+    </div>
+  </section>
+
+  <section class="col">
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-tab="hoje" aria-selected="true">Missões</button>
+      <button class="tab" role="tab" data-tab="rotina" aria-selected="false">Rotina</button>
+      <button class="tab" role="tab" data-tab="heroi" aria-selected="false">Herói</button>
+      <button class="tab" role="tab" data-tab="conq" aria-selected="false">Conquistas</button>
+      <button class="tab" role="tab" data-tab="ajustes" aria-selected="false">Ajustes</button>
+    </div>
+    <div class="tabpanel box" role="tabpanel" id="p-hoje"></div>
+    <div class="tabpanel box" role="tabpanel" id="p-rotina" hidden></div>
+    <div class="tabpanel box" role="tabpanel" id="p-heroi" hidden></div>
+    <div class="tabpanel box" role="tabpanel" id="p-conq" hidden></div>
+    <div class="tabpanel box" role="tabpanel" id="p-ajustes" hidden></div>
+  </section>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<div class="modal" id="modal" hidden><div class="box" id="modal-box"></div></div>
+<div class="onboard" id="onboard" hidden></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

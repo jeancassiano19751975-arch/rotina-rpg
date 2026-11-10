@@ -1,0 +1,15 @@
+{
+  "appId": "com.jean.rotinarpg",
+  "appName": "Rotina RPG",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#141a36"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#f2c14e",
+      "sound": "missao.wav"
+    }
+  }
+}

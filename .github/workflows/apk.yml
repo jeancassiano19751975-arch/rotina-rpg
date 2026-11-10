@@ -1,0 +1,64 @@
+# Gera o APK do Rotina RPG na nuvem do GitHub (grátis) a cada envio para a branch main.
+# O APK fica em Releases, com um link para baixar direto no celular.
+name: Gerar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Criar projeto Android
+        run: |
+          npx cap add android
+          node scripts/setup-android.mjs
+          npx cap sync android
+
+      # Mesma chave de assinatura sempre: assim o APK novo instala por cima do antigo sem perder o progresso.
+      - name: Chave de assinatura fixa
+        run: |
+          mkdir -p ~/.android
+          cp android-res/debug.keystore ~/.android/debug.keystore
+
+      - name: Compilar APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../RotinaRPG.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RotinaRPG-apk
+          path: RotinaRPG.apk
+
+      - name: Publicar em Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Rotina RPG v1.0.${{ github.run_number }}
+          body: |
+            Baixe o **RotinaRPG.apk** abaixo pelo celular, abra o arquivo e permita instalar de fontes desconhecidas.
+            Para atualizar, é só instalar o novo por cima: o progresso continua.
+          files: RotinaRPG.apk
+          make_latest: true
