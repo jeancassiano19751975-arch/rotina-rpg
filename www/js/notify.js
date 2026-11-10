@@ -37,7 +37,8 @@ export async function reschedule() {
   const ln = LN(); if (!isNative || !ln) return;
   try {
     const pend = await ln.getPending();
-    if (pend.notifications?.length) await ln.cancel({ notifications: pend.notifications.map(n => ({ id: n.id })) });
+    const old = (pend.notifications || []).filter(n => n.id !== 1999999);   // o aviso do foco fica
+    if (old.length) await ln.cancel({ notifications: old.map(n => ({ id: n.id })) });
     const list = [], now = Date.now();
     for (let i = 0; i < 7 && list.length < 60; i++) {
       const k = addDays(today(), i);
@@ -68,6 +69,20 @@ export async function reschedule() {
   } catch (e) { console.warn('agendar', e); }
 }
 
+// Aviso quando o cronômetro do modo foco termina.
+const FOCUS_NID = 1999999;
+export async function scheduleFocusEnd(f) {
+  const ln = LN(); if (!isNative || !ln) return;
+  try {
+    await ln.cancel({ notifications: [{ id: FOCUS_NID }] });
+    if (!f) return;
+    const at = new Date(f.start + f.min * 60000);
+    if (at <= Date.now()) return;
+    await ln.schedule({ notifications: [{ id: FOCUS_NID, title: '⏱ Foco concluído!', body: 'Abra o Rotina RPG e toque em Concluir: missão verificada, +50% de XP.',
+      channelId: 'missoes', sound: 'missao.wav', schedule: { at, allowWhileIdle: true } }] });
+  } catch (e) { console.warn('foco', e); }
+}
+
 export async function snooze(notification) {
   const ln = LN(); if (!isNative || !ln || !notification) return;
   const at = new Date(Date.now() + 10 * 60000);
@@ -91,15 +106,10 @@ export async function openExactSettings() {
   const ln = LN(); if (!isNative || !ln || !ln.changeExactNotificationSetting) return;
   try { await ln.changeExactNotificationSetting(); } catch (e) {}
 }
-export async function askLocation() {
-  const g = P('Geolocation'); if (!isNative || !g) return 'browser';
-  try { const r = await g.requestPermissions(); return r.location; } catch (e) { return 'error'; }
-}
 export async function permissionStatus() {
-  const out = { notif: 'browser', loc: 'browser', exact: 'granted' };
+  const out = { notif: 'browser', exact: 'granted' };
   if (!isNative) return out;
   try { out.notif = (await LN().checkPermissions()).display; } catch (e) {}
-  try { out.loc = (await P('Geolocation').checkPermissions()).location; } catch (e) {}
   out.exact = await checkExact();
   return out;
 }

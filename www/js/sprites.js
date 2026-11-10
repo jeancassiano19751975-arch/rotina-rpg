@@ -27,6 +27,26 @@ export const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; re
 function drawHelm(x, by, A, tier) {
   if (!tier) return;
   const m = A.main, d = A.dark, l = A.light;
+  if (tier === 'farao') {                   // nemes do faraó: listras douradas e azuis caindo nos ombros
+    R(x - 6, by - 33, 12, 5, m); R(x - 5, by - 33, 9, 1, l);
+    for (let i = 0; i < 3; i++) R(x - 6, by - 31 + i * 2, 12, 1, d);
+    R(x - 8, by - 28, 4, 9, m); R(x - 8, by - 26, 4, 1, d); R(x - 8, by - 23, 4, 1, d); R(x - 8, by - 20, 4, 1, d);
+    R(x + 4, by - 28, 2, 5, m); R(x + 4, by - 26, 2, 1, d);
+    R(x, by - 36, 2, 3, m); R(x, by - 37, 2, 1, '#58d4ff');
+    return;
+  }
+  if (tier === 'gelo') {                    // coroa de cristais de gelo
+    R(x - 6, by - 32, 12, 2, m); R(x - 6, by - 32, 12, 1, l);
+    for (const [ox, h] of [[-6, 4], [-3, 6], [0, 8], [3, 6]]) { R(x + ox, by - 32 - h, 2, h, m); R(x + ox, by - 32 - h, 1, h, l); }
+    R(x + 5, by - 35, 1, 3, m); R(x, by - 31, 2, 1, d); R(x - 4, by - 31, 1, 1, '#58d4ff');
+    return;
+  }
+  if (tier === 'natal') {                   // gorro com pompom caindo pro lado
+    R(x - 6, by - 33, 12, 4, m); R(x - 5, by - 33, 6, 1, shade(m, 0.25));
+    R(x - 4, by - 36, 8, 3, m); R(x - 7, by - 37, 6, 2, m); R(x - 9, by - 36, 3, 3, '#ffffff'); R(x - 8, by - 37, 1, 1, '#ffffff');
+    R(x - 7, by - 30, 14, 3, '#ffffff'); R(x - 7, by - 28, 14, 1, '#d8e4f0');
+    return;
+  }
   if (tier === 1) {                         // gorro de couro
     R(x - 6, by - 32, 12, 4, m); R(x - 6, by - 32, 12, 1, l); R(x - 6, by - 28, 13, 1, d); R(x - 6, by - 28, 3, 5, m);
     return;
@@ -56,9 +76,17 @@ export function drawHero(o) {
   const ls = o.walk && o.step ? 1 : 0, rs = o.walk && !o.step ? 1 : 0;
   const by = y + (o.walk && o.step ? -1 : 0);
 
-  if (o.cape) {
-    const wv = Math.round(Math.sin(o.time * 6));
-    R(x - 9 - wv, by - 20, 4, 14, '#b82c26'); R(x - 10 - wv, by - 8, 3, 2, '#8a1e1a'); R(x - 8, by - 20, 3, 2, '#e04a40');
+  if (o.cape) {                             // capa esvoaçando atrás do herói
+    const K = o.cape === true ? { a: '#b82c26', b: '#8a1e1a', c: '#e04a40' } : o.cape;
+    const t = o.time || 0, wv = Math.sin(t * 6), wv2 = Math.sin(t * 6 - 1.2);
+    for (let r = 0; r <= 18; r++) {               // capa em leque: larga embaixo, balança com o vento
+      const k = r / 18, l = Math.round(x - 6 - r * 0.62 - (r > 6 ? (k * k) * (2 + wv * 2) : 0) - (r > 14 ? wv2 : 0)), yy = by - 21 + r;
+      const rr = x - 2;
+      R(l, yy, rr - l, 1, r === 18 ? K.b : K.a); R(l, yy, 1, 1, K.b);
+      if (r > 3 && r % 5 === 0) R(l + 2, yy, Math.max(1, (rr - l) - 6), 1, K.b);
+      if (r < 2) R(l + 1, yy, rr - l - 2, 1, K.c);
+    }
+    if (K.sparkle && Math.floor(t * 5) % 3 === 0) R(x - 13 - Math.round(wv), by - 8 + Math.floor(t * 7) % 5, 1, 1, '#ffffff');
   }
   // pernas (a de trás mais escura) e botas
   if (air) { R(x - 5, y - 9, 4, 6, lDark); R(x + 1, y - 10, 4, 5, lMain); R(x - 6, y - 4, 5, 3, bootD); R(x + 2, y - 6, 5, 3, bootM); }
@@ -92,7 +120,7 @@ export function drawHero(o) {
   R(-3, -10, 7, 2, Wp.guard); R(-3, -10, 7, 1, shade(Wp.guard, 0.3)); R(0, -8, 1, 1, '#e8c060');
   R(-1, -10 - Lg, 3, Lg, Wp.blade); R(0, -10 - Lg, 1, Lg, Wp.edge); R(0, -11 - Lg, 1, 1, Wp.edge);
   R(1, -9 - Lg, 1, Lg - 2, shade(Wp.blade, -0.25));
-  if (Wp.glow || o.goldGlow) { R(-2, -9 - Lg, 1, Lg - 2, o.goldGlow ? '#ffe08a' : Wp.edge); R(2, -9 - Lg, 1, Lg - 2, o.goldGlow ? '#ffe08a' : Wp.edge); }
+  if (Wp.glow || o.goldGlow) { const gc = Wp.glowC || (o.goldGlow ? '#ffe08a' : Wp.edge); R(-2, -9 - Lg, 1, Lg - 2, gc); R(2, -9 - Lg, 1, Lg - 2, gc); }
   ctx.restore();
   if (o.shield && o.shieldFwd) drawShield(x, by, o.shield, true);
 }
@@ -282,7 +310,26 @@ export function drawChest(x, y, open, t) {
   if (!open) { R(x - 9, y - 15, 18, 4, '#a06a32'); R(x - 9, y - 15, 18, 1, '#c08040'); R(x - 1, y - 13, 3, 4, '#f2c14e'); R(x, y - 12, 1, 1, '#6a4420'); }
   else R(x - 7, y - 11, 14, 2, '#ffe08a');
 }
+function drawPotion(x, y, c) {
+  R(x - 1, y - 16, 3, 2, '#9a6436'); R(x - 1, y - 14, 3, 2, '#d8e4f0');
+  R(x - 4, y - 12, 9, 11, '#d8e4f0'); R(x - 3, y - 9, 7, 7, c); R(x - 3, y - 9, 7, 1, shade(c, 0.35));
+  R(x - 3, y - 11, 1, 3, '#ffffff'); R(x - 2, y - 2, 5, 1, shade(c, -0.3));
+}
+function drawCapeIcon(x, y, K) {
+  R(x - 5, y - 16, 10, 3, K.a); R(x - 4, y - 16, 8, 1, K.c);
+  R(x - 6, y - 13, 12, 6, K.a); R(x - 7, y - 7, 14, 6, K.a); R(x - 7, y - 1, 14, 1, K.b);
+  R(x - 6, y - 13, 1, 12, K.b); R(x + 5, y - 13, 1, 12, K.b); R(x - 1, y - 13, 1, 12, K.b); R(x - 3, y - 12, 1, 9, K.c);
+  R(x - 1, y - 16, 2, 2, '#f2c14e');
+}
 export function drawItemIcon(x, y, item, kind) {
+  if (kind === 'cape') { drawCapeIcon(x, y, item); return; }
+  if (kind === 'potion') { drawPotion(x, y, item.c || item); return; }
+  if (kind === 'surprise') {
+    if (item.type === 'cape') drawCapeIcon(x, y, item.vis);
+    else if (item.type === 'potion') drawPotion(x, y, item.c);
+    else { for (let i = 0; i < 4; i++) { R(x - 6 + i * 3, y - 4 - i * 3, 7, 3, '#e8b33c'); R(x - 6 + i * 3, y - 4 - i * 3, 7, 1, '#fff0a0'); R(x - 6 + i * 3, y - 2 - i * 3, 7, 1, '#9b6f1e'); } }
+    return;
+  }
   if (kind === 'pet') {                       // ovo do pet, chacoalhando
     const w = Math.round(Math.sin(Date.now() / 90) * 1);
     for (let dy = -7; dy <= 7; dy++) { const h = Math.round(5 * Math.sqrt(1 - (dy * dy) / 56)); R(x - h + w, y - 9 + dy, h * 2 + 1, 1, dy < -2 ? '#fff4e0' : '#f0dcb8'); }

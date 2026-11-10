@@ -2,7 +2,7 @@
 import { S, save } from './state.js';
 import { SKINS, HAIRS, CLOTHES, CATS, WEEKDAYS } from './data.js';
 import { drawPreview } from './game.js';
-import { isNative, askNotifications, checkExact, openExactSettings, askLocation } from './notify.js';
+import { isNative, askNotifications, checkExact, openExactSettings } from './notify.js';
 import { GOALS, DELAYS, TRAIN, FREE, defaultProfile, buildRoutine } from './mentor.js';
 
 const $ = id => document.getElementById(id);
@@ -126,11 +126,6 @@ export function runOnboarding() {
       { html: () => shell('<span class="ob-icon">🔋</span><h1>Bateria sem restrição</h1><p>Alguns celulares (Xiaomi, Samsung, Motorola) fecham apps em segundo plano e as notificações somem. Para evitar:</p>' +
         '<div class="card box"><p>1. Abra as Configurações do Android</p><p>2. Apps → Rotina RPG → Bateria</p><p>3. Escolha <b>Sem restrições</b></p></div>' +
         '<div class="ob-acts"><button class="btn gold-btn" id="ob-next">Já fiz, continuar</button></div>') },
-
-      { html: () => shell('<span class="ob-icon">🚶</span><h1>Caminhadas</h1><p>A localização serve só para contar seus km nas caminhadas e transformar em XP verificado. Depois, para contar com o celular no bolso, o Android vai pedir "Permitir o tempo todo".</p>' +
-        (isNative ? '' : browserNote) +
-        '<div class="ob-acts"><button class="btn gold-btn" id="ob-act">Permitir localização</button><button class="btn" id="ob-next">Agora não</button></div>'),
-        bind: next => { $('ob-act').onclick = async () => { await askLocation(); next(); }; } },
 
       { html: () => shell('<span class="ob-icon">⚔️</span><h1>Pronto, ' + esc(cfg.name || 'herói') + '!</h1><p>Suas missões estão na aba Missões. As que têm ⭐ são de foco e valem mais.</p>' +
         '<div class="card box"><p>O dia vale até 300 XP, dividido entre as missões.</p><p>Até 30 min de atraso vale 100%; até 2 h, 75%; depois, 50%.</p><p>A missão libera 1 h antes do horário.</p></div>' +

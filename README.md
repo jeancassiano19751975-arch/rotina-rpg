@@ -1,8 +1,20 @@
-# Rotina RPG — Versão 1.1
+# Rotina RPG — Versão 3
 
 Cumpra sua rotina na vida real e seu herói fica mais forte no jogo.
 
-## Novidades da 1.1
+## Novidades da 3
+- **Vila** (aba nova): Loja (ver e escolher o que vestir), Ferreiro (forja por peça, até +3), Mercador (capas e poções, nível 3) e Biblioteca (bestiário, depois do 1º mini-chefão)
+- 13 equipamentos de conquista com poderes; capas aparecem no herói
+- Eventos: Halloween (24/10–02/11), Natal (18–26/12) e aniversário (data em Ajustes)
+- Elites (Gigante, Veloz, Blindado, Vampiro, Explosivo), chefões de outra cor no Modo Pesadelo, dia e noite pela hora real
+- Regra dos 70%: o chefão só aparece com 70% da rotina dos últimos 7 dias cumprida
+- Baú surpresa nas missões no horário
+- Missões da semana com baú no domingo, modo dia difícil (2 por semana), modo foco ⏱ (+50%)
+- Resumo da semana com gráfico, diário do dia e check-in semanal do Mestre (pausar missão, mudar horário, subir o desafio)
+- Android: ícone que evolui (6 fases, dá para travar), abertura animada, widget com o herói e a próxima missão, "Feito" na notificação sem abrir o app, aviso de atualização com download e instalação
+- A permissão de localização saiu
+
+## Da 1.1
 - Visual estilo Terraria (desenhos originais): contorno colorido, luz e sombra, monstros se despedaçando
 - Herói com combos (corte, estocada, giro, salto no crítico, golpe de escudo), recuo e pose de vitória
 - Escudo (bloqueio) e armadura em 3 peças visíveis: capacete, peitoral, calças e botas
@@ -37,7 +49,7 @@ Precisa do [Node.js](https://nodejs.org) (versão 18 ou mais nova).
 npm install
 npm run dev
 ```
-Abra http://localhost:5173. No navegador, notificações e GPS ficam desligados; o resto funciona.
+Abra http://localhost:5173. No navegador, notificações, widget e ícone ficam desligados; o resto funciona.
 
 ## Gerar o APK pelo GitHub (mais fácil, sem Android Studio)
 1. Crie um repositório no GitHub e envie esta pasta (o `.gitignore` já deixa `node_modules` e `android` de fora).
@@ -61,7 +73,9 @@ Abra http://localhost:5173. No navegador, notificações e GPS ficam desligados;
 Sempre que mudar o código em `www/`, rode `npm run sync` e gere o APK de novo.
 
 ## Depois de instalar
-- Na primeira abertura o app pede: notificações, horário exato, bateria e localização.
+- Na primeira abertura o app pede: notificações, horário exato e bateria.
+- Ao atualizar da 1.1 para a 3, o atalho antigo pode sumir da tela inicial: pegue o ícone novo na gaveta de apps.
+- Widget: segure o dedo na tela inicial → Widgets → Rotina RPG.
 - Se as notificações atrasarem: Configurações → Apps → Rotina RPG → Bateria → **Sem restrições**.
 - As notificações são agendadas para os próximos 7 dias sempre que você abre o app.
 
@@ -82,6 +96,11 @@ www/
     monsters.js    desenho dos 42 monstros e dos chefões grandes
     pets.js        desenho dos pets
     ui.js          telas e abas
+    village.js     aba Vila: loja, ferreiro, mercador, biblioteca
+    gear.js        equipamentos, forja, capas e poções
+    events.js      eventos do calendário e dia/noite
+    week.js        missões da semana, foco, diário, resumo, check-in
+    native.js      ponte com o Android: ícone, widget, atualização
     onboarding.js  primeira abertura
     mentor.js      Conselho do Mestre: perguntas e rotina sugerida
     notify.js      notificações, permissões, backup no Android
@@ -90,6 +109,7 @@ android-res/missao.wav   som das notificações
 scripts/setup-android.mjs  ajusta o projeto Android (som + permissões)
 ```
 
-## Próximas versões
-- **V2:** check-in semanal do Mestre (sugere subir ou baixar o desafio), caminhada com GPS, modo foco, missões semanais, pet, regra dos 70% para chefões, Neve e Caverna, elites, dia/noite, resumo semanal, modo dia difícil, baú surpresa
-- **V3:** vila, bestiário, visuais e poções, Pântano e Inferno, Modo Pesadelo, eventos, marcar pela notificação sem abrir o app, widget
+## Android (pasta android-res)
+- `native/`: código Java (ponte RpgNative, botão Feito sem abrir o app, widget)
+- `res/`: ícones do herói, abertura, layout do widget
+- `scripts/setup-android.mjs` copia tudo para o projeto Android a cada compilação

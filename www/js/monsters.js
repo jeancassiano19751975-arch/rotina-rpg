@@ -633,4 +633,40 @@ function condeG(m, t, p) {
   R(-6, -60, 13, 3, '#e8b33c'); R(-6, -60, 13, 1, '#ffe08a'); [-6, -1, 4].forEach(x => TRI(x, -60, x + 1, -64, x + 2, -60, '#e8b33c')); R(0, -59, 2, 1, '#e0304a');
 }
 
+// ---------- Eventos ----------
+function abobora(m, t, p) {
+  const hop = m.state === 'walk' ? Math.abs(Math.sin(t * 7 + m.seed)) * 5 : 0, y = -hop, l = lungeK(m);
+  // perninhas de cipó
+  R(-4, y - 3, 2, 3 + hop, '#3a6a2a'); R(3, y - 3, 2, 3 + hop, '#3a6a2a');
+  // abóbora em gomos
+  E(0, y - 9, 9, 7, p.a);
+  R(-9, y - 10, 2, 4, p.b); R(-4, y - 15, 2, 12, p.b); R(3, y - 15, 2, 12, p.b); R(8, y - 10, 2, 4, p.b);
+  R(-6, y - 15, 4, 1, p.c); R(-7, y - 13, 2, 3, p.c);
+  R(-1, y - 18, 3, 3, '#4a7a2a'); R(1, y - 19, 3, 1, '#4a7a2a'); R(3, y - 18, 2, 1, '#6aa04a');
+  // rosto aceso
+  const glow = Math.floor(t * 6) % 2 ? '#ffe04a' : '#ffb020';
+  TRI(-7, y - 10, -4, y - 13, -2, y - 10, glow); TRI(1, y - 10, 3, y - 13, 6, y - 10, glow);
+  R(-6 - l * 2, y - 7, 11, 2, glow); R(-5 - l * 2, y - 5, 2, 1, glow); R(-1 - l * 2, y - 5, 2, 1, glow); R(3 - l * 2, y - 5, 2, 1, glow);
+  R(-4 - l * 2, y - 7, 1, 1, p.b); R(0 - l * 2, y - 7, 1, 1, p.b); R(4 - l * 2, y - 7, 1, 1, p.b);
+}
+function bonecoNeve(m, t, p) {
+  const sway = Math.round(Math.sin(t * 2 + m.seed)), l = lungeK(m);
+  EG(0, -8, 10, 8, ['#ffffff', '#eef4fc', '#d8e4f0', '#b8c8dc']);
+  EG(sway, -22, 8, 7, ['#ffffff', '#eef4fc', '#d8e4f0', '#b8c8dc']);
+  EG(sway, -34, 6, 6, ['#ffffff', '#eef4fc', '#d8e4f0', '#c0d0e0']);
+  R(sway - 1, -24, 2, 2, '#2a2a34'); R(sway - 1, -19, 2, 2, '#2a2a34'); R(-1, -10, 2, 2, '#2a2a34');
+  // cachecol
+  R(sway - 6, -29, 12, 3, '#d83a3a'); R(sway - 6, -29, 12, 1, '#ff6a5a'); R(sway + 3, -27, 3, 7, '#d83a3a'); R(sway + 3, -21, 3, 1, '#ffffff');
+  // rosto bravo
+  R(sway - 4, -37, 2, 2, '#14141c'); R(sway + 1, -37, 2, 2, '#14141c'); R(sway - 5, -39, 3, 1, '#14141c'); R(sway + 2, -39, 3, 1, '#14141c');
+  TRI(sway - 1, -34, sway - 8, -33, sway - 1, -32, '#ff8a2a');
+  for (let i = 0; i < 4; i++) R(sway - 3 + i * 2, -30 - (i === 0 || i === 3 ? 1 : 0), 1, 1, '#2a2a34');
+  // cartola
+  R(sway - 7, -40, 14, 2, '#1e1e2a'); R(sway - 5, -48, 10, 8, '#1e1e2a'); R(sway - 5, -43, 10, 2, '#d83a3a'); R(sway - 4, -48, 3, 1, '#3a3a4a');
+  // braços de galho
+  L(sway - 7, -23, sway - 15 - l * 4, -30, 1, '#6a4a2a'); L(sway - 13 - l * 4, -28, sway - 16 - l * 4, -26, 1, '#6a4a2a');
+  L(sway + 7, -23, sway + 14, -18, 1, '#6a4a2a'); L(sway + 12, -19, sway + 14, -23, 1, '#6a4a2a');
+}
+
+Object.assign(DRAW, { abobora, bonecoNeve });
 Object.assign(DRAW, { dragaoG, serpenteG, slimeG, faraoG, rainhaG, reiG, condeG });

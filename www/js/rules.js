@@ -2,8 +2,9 @@
 import { S, bus, save, today, yesterday, addDays, parseDay, tMin, tGame, nowMin, weekStart } from './state.js';
 import {
   DAILY_XP, OFFLINE_CAP_H, KILLS_PER_STAGE, CATS, WEAPONS, ARMOR_SETS, PIECES, SHIELDS, FORGE_MAX, FORGE_BONUS,
-  RELICS, MONSTERS, BIOMES, ACHIEVEMENTS, PETS, PET_STAGES
+  RELICS, MONSTERS, BIOMES, ACHIEVEMENTS, PETS, PET_STAGES, POTIONS, SHOP_CAPES
 } from './data.js';
+import { itemStats, equippedId, powers, buffOn, checkGear, migrateGear3, bestLevel, item } from './gear.js';
 import { FOCUS_WEIGHT } from './mentor.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -49,28 +50,32 @@ export const tiredOn = () => Date.now() < S.tiredUntil;
 export const restedOn = () => S.restedDay === today();
 
 export function heroStats() {
-  const W = WEAPONS[weaponTier()], st = shieldTier(), Sh = st >= 0 ? SHIELDS[st] : null;
-  const fa = 1 + FORGE_BONUS * S.forge.a, fs = 1 + FORGE_BONUS * (S.forge.s || 0);
-  let armDef = 0, armHp = 0;
-  PIECES.forEach((p, i) => { const A = ARMOR_SETS[pieceTier(i)]; armDef += A.def * p.share; armHp += A.hp * p.share; });
-  const atk = (2 + S.level + W.atk * (1 + FORGE_BONUS * S.forge.w) + S.attrs.for / 4) * (1 + relicSum('atk'));
-  const def = armDef * fa + (Sh ? Sh.def * fs : 0) + S.attrs.res / 8;
-  const maxHp = (30 + S.level * 8 + armHp * fa + S.attrs.vit * 0.8) * (1 + relicSum('hp'));
-  const crit = 0.06 + Math.min(0.25, S.attrs.sab / 400) + relicSum('crit') + (petActive('crit') ? 0.04 * petStage().k : 0);
-  const block = Sh ? Sh.block + 0.02 * (S.forge.s || 0) : 0;
-  let atkInt = Math.max(0.45, 0.85 - S.level * 0.012);
+  const P = powers();
+  const st = slot => { const id = equippedId(slot); return id ? itemStats(id) : {}; };
+  const w = st('w'), sh = st('s'), arm = ['h', 'c', 'l'].map(st);
+  const armDef = arm.reduce((x, a) => x + (a.def || 0), 0), armHp = arm.reduce((x, a) => x + (a.hp || 0), 0);
+  const atk = (2 + S.level + (w.atk || 0) + S.attrs.for / 4) * (1 + relicSum('atk') + (P.atkPct || 0)) * (buffOn('forca') ? 1.3 : 1);
+  const def = (armDef + (sh.def || 0) + S.attrs.res / 8) * (1 + (P.statPct || 0)) * (buffOn('ferro') ? 1.3 : 1);
+  const maxHp = (30 + S.level * 8 + armHp + S.attrs.vit * 0.8) * (1 + relicSum('hp') + (P.hpPct || 0) + (P.statPct || 0));
+  const crit = 0.06 + Math.min(0.25, S.attrs.sab / 400) + relicSum('crit') + (P.crit || 0) + (petActive('crit') ? 0.04 * petStage().k : 0);
+  const block = (sh.block || 0) + (P.block || 0);
+  let atkInt = Math.max(0.45, 0.85 - S.level * 0.012) * (1 - (P.speed || 0));
   if (tiredOn()) atkInt *= 1.35;
   if (furyOn()) atkInt /= 1.6;
-  return { atk: Math.round(atk), def: Math.round(def), maxHp: Math.round(maxHp), crit, block, atkInt };
+  return { atk: Math.round(atk), def: Math.round(def), maxHp: Math.round(maxHp), crit, block, atkInt, powers: P };
 }
 
 // Saves antigos: marca o equipamento atual como já visto (sem baús repetidos).
 export function migrateGear() {
+  migrateGear3();
+  if (!S.since) S.since = Object.keys(S.log || {}).sort()[0] || today();
   if (S.seen && S.seen.ok) return;
   S.seen = { ok: true, w: weaponTier(), s: shieldTier(), p: [pieceTier(0), pieceTier(1), pieceTier(2)] };
   if (S.forge.s == null) S.forge.s = 0;
 }
 
+// Peça nova de nível: veste sozinha, menos se o herói estiver usando uma peça de conquista ou capa comprada.
+function keepGear(slot) { const e = S.equip && S.equip[slot]; if (!e || e === 'none' || /^[wshcl]\d$/.test(e)) delete S.equip[slot]; }
 export function gainXP(n) {
   S.xp += n;
   while (S.xp >= xpNeed(S.level)) {
@@ -79,36 +84,45 @@ export function gainXP(n) {
     bus.emit('levelup', S.level);
   }
   migrateGear();
+  S.equip = S.equip || {};
   const wt = weaponTier(), st = shieldTier();
-  if (wt > S.seen.w) { S.seen.w = wt; S.forge.w = 0; bus.emit('chest', { kind: 'weapon', item: WEAPONS[wt], name: WEAPONS[wt].n }); }
-  if (st > S.seen.s) { S.seen.s = st; S.forge.s = 0; bus.emit('chest', { kind: 'shield', item: SHIELDS[st], name: SHIELDS[st].n }); }
+  if (wt > S.seen.w) { S.seen.w = wt; keepGear('w'); bus.emit('chest', { kind: 'weapon', item: WEAPONS[wt], name: WEAPONS[wt].n }); }
+  if (st > S.seen.s) { S.seen.s = st; keepGear('s'); bus.emit('chest', { kind: 'shield', item: SHIELDS[st], name: SHIELDS[st].n }); }
   ['helm', 'chest', 'legs'].forEach((kind, i) => {
     const t = pieceTier(i);
-    if (t > S.seen.p[i]) { S.seen.p[i] = t; if (i === 1) S.forge.a = 0; bus.emit('chest', { kind, item: ARMOR_SETS[t], name: ARMOR_SETS[t].names[i] }); }
+    if (t > S.seen.p[i]) { S.seen.p[i] = t; keepGear('hcl'[i]); bus.emit('chest', { kind, item: ARMOR_SETS[t], name: ARMOR_SETS[t].names[i] }); }
   });
-}
-
-// ---------- Forja ----------  w = arma · a = armadura · s = escudo
-export function forgeCost(kind) {
-  const tier = kind === 'w' ? weaponTier() : kind === 's' ? shieldTier() : armorTier();
-  return Math.round(150 * (tier + 1) * Math.pow((S.forge[kind] || 0) + 1, 2));
-}
-export function doForge(kind) {
-  if (kind === 's' && shieldTier() < 0) return { error: 'Você ainda não tem escudo.' };
-  if ((S.forge[kind] || 0) >= FORGE_MAX) return { error: 'Já está no máximo (+' + FORGE_MAX + ').' };
-  const c = forgeCost(kind);
-  if (S.gold < c) return { error: 'Faltam ' + fmt(c - S.gold) + ' de ouro.' };
-  S.gold -= c; S.forge[kind] = (S.forge[kind] || 0) + 1; S.forged = true;
-  checkAch(); save();
-  return { ok: true, level: S.forge[kind] };
 }
 
 // ---------- Rotina ----------
 export const tasksOn = k => {
   const wd = parseDay(k).getDay();
-  return S.tasks.filter(t => t.days.includes(wd)).sort((a, b) => tGame(a.time) - tGame(b.time));
+  return S.tasks.filter(t => t.days.includes(wd) && !(t.pauseUntil && k < t.pauseUntil)).sort((a, b) => tGame(a.time) - tGame(b.time));
 };
 export const isRest = k => S.restDays.includes(k);
+// Modo dia difícil: só as essenciais contam para a sequência; o XP do dia cai pela metade.
+export const HARD_PER_WEEK = 2;
+export const isHard = (k = today()) => !!(S.hardDays && S.hardDays.includes(k));
+export const hardCountWeek = k => (S.hardDays || []).filter(d => weekStart(d) === weekStart(k)).length;
+export function essentials(k = today()) {
+  const list = tasksOn(k), f = list.filter(t => t.focus);
+  if (f.length) return f;
+  return list.slice().sort((a, b) => weight(b) - weight(a)).slice(0, Math.min(2, list.length));
+}
+export function setHard(on) {
+  const k = today(); S.hardDays = S.hardDays || [];
+  if (on) {
+    if (isRest(k)) return { error: 'Hoje já é dia de descanso.' };
+    if (isHard(k)) return { ok: true };
+    if (hardCountWeek(k) >= HARD_PER_WEEK) return { error: 'Você já usou os ' + HARD_PER_WEEK + ' dias difíceis dessa semana.' };
+    if (Object.keys(S.log[k] || {}).length) return { error: 'O dia difícil precisa ser ligado antes de concluir a primeira missão do dia.' };
+    S.hardDays.push(k); S.hardDays = S.hardDays.filter(d => d >= addDays(k, -30));
+  } else {
+    if (Object.keys(S.log[k] || {}).length) return { error: 'Já tem missão concluída hoje no modo difícil.' };
+    S.hardDays = S.hardDays.filter(d => d !== k);
+  }
+  save(); return { ok: true };
+}
 export const dayLog = k => (S.log[k] = S.log[k] || {});
 const weight = t => (CATS[t.cat]?.w || 1) * Math.sqrt(clamp(t.dur, 5, 180) / 30) * (t.focus ? FOCUS_WEIGHT : 1);
 
@@ -131,25 +145,27 @@ export function predictXP(t, k = today()) {
   const li = lateInfo(t);
   let xp = baseXP(t, k) * li.factor;
   if (restedOn() && tGame(t.time) < 720) xp *= 1.1;
+  if (isHard(k)) xp *= 0.5;
   return Math.round(xp);
 }
 
 export function completeTask(id, opts = {}) {
-  const k = today();
+  const k = opts.day || today();      // "Feito" pela notificação pode chegar depois da virada
   if (isRest(k)) return { error: 'Hoje é dia de descanso.' };
   const t = S.tasks.find(x => x.id === id);
   if (!t || !tasksOn(k).includes(t)) return { error: 'Essa missão não é de hoje.' };
   const lg = dayLog(k);
   if (lg[id]) return { error: 'Missão já concluída.' };
-  const li = lateInfo(t);
+  const li = lateInfo(t, opts.atMin ?? nowMin());   // no modo foco, o horário que vale é o do início
   if (li.locked) return { error: 'Essa missão libera às ' + li.unlockAt + '.' };
 
   let xp = baseXP(t, k) * li.factor;
   if (restedOn() && tGame(t.time) < 720) xp *= 1.1;
   if (opts.verified) xp *= 1.5;
+  if (isHard(k)) xp *= 0.5;
   xp = Math.max(1, Math.round(xp));
 
-  lg[id] = { at: Date.now(), xp, late: !!li.late, verified: !!opts.verified };
+  lg[id] = { at: Date.now(), xp, late: !!li.late, verified: !!opts.verified, focus: !!opts.focus };
   S.tasksDone++;
   if (!li.late) S.onTime++;
   if (nowMin() < 420) S.earlyBird++;
@@ -164,22 +180,41 @@ export function completeTask(id, opts = {}) {
   else { S.furyUntil = Math.max(Date.now(), S.furyUntil) + 90000; S.tiredUntil = 0; }
 
   gainXP(xp);
+  if (!li.late && Math.random() < 0.12) surpriseChest();
 
   let perfect = false;
-  const list = tasksOn(k);
+  const hard = isHard(k), list = hard ? essentials(k) : tasksOn(k);
   if (list.length && list.every(x => lg[x.id]) && S.lastPerfectDay !== k) {
     perfect = true;
     S.lastPerfectDay = k;
-    S.perfectDays++;
-    S.streak = S.lastGood === yesterday() ? S.streak + 1 : 1;
+    if (!hard) S.perfectDays++;
+    S.streak = S.lastGood === addDays(k, -1) ? S.streak + 1 : 1;
     S.lastGood = k;
     S.bestStreak = Math.max(S.bestStreak, S.streak);
-    if (S.pets) for (const id of Object.keys(S.pets)) S.pets[id].days = (S.pets[id].days || 0) + 1;
+    if (S.pets && !hard) for (const id of Object.keys(S.pets)) S.pets[id].days = (S.pets[id].days || 0) + 1;
   }
-  bus.emit('task-done', { t, xp, gold, late: !!li.late, verified: !!opts.verified, perfect, attr });
+  bus.emit('task-done', { t, xp, gold, late: !!li.late, verified: !!opts.verified, perfect, hard, attr });
   checkAch();
   save();
   return { ok: true, xp, gold, late: !!li.late, perfect };
+}
+
+// Baú surpresa: às vezes cai ao concluir missão no horário.
+export function surpriseChest() {
+  const r = Math.random(), capes = SHOP_CAPES.filter(c => !(S.owned && S.owned[c.id]));
+  if (r < 0.15 && capes.length) {
+    const c = capes[Math.floor(Math.random() * capes.length)];
+    S.owned = S.owned || {}; S.owned[c.id] = true;
+    bus.emit('chest', { kind: 'surprise', item: { type: 'cape', vis: c.vis }, name: c.n });
+  } else if (r < 0.4) {
+    const ks = Object.keys(POTIONS), k = ks[Math.floor(Math.random() * ks.length)];
+    S.potions = S.potions || {}; S.potions[k] = (S.potions[k] || 0) + 1;
+    bus.emit('chest', { kind: 'surprise', item: { type: 'potion', c: POTIONS[k].c }, name: POTIONS[k].n });
+  } else {
+    const g = Math.round(40 * (1 + (S.maxStage || 1) / 4));
+    S.gold += g;
+    bus.emit('chest', { kind: 'surprise', item: { type: 'gold' }, name: '+' + fmt(g) + ' de ouro' });
+  }
 }
 
 // Virada de dia: confere sequência, descanso e "Descansado".
@@ -218,14 +253,30 @@ export function toggleRest(k) {
 // Porcentagem da rotina cumprida nos últimos 7 dias (sem contar descanso).
 export function weekRate() {
   let tot = 0, done = 0;
+  const since = S.since || today();
   for (let i = 1; i <= 7; i++) {
     const k = addDays(today(), -i);
-    if (isRest(k)) continue;
+    if (k < since || isRest(k)) continue;
     const list = tasksOn(k), lg = S.log[k] || {};
     tot += list.length; done += list.filter(x => lg[x.id]).length;
   }
-  return tot ? done / tot : 1;
+  return tot >= 3 ? done / tot : 1;
 }
+// Hoje também conta (o que já foi feito), para o chefão liberar assim que a pessoa recuperar.
+export function bossRate() {
+  let tot = 0, done = 0;
+  const since = S.since || today();
+  for (let i = 0; i <= 6; i++) {
+    const k = addDays(today(), -i);
+    if (k < since || isRest(k)) continue;
+    const list = tasksOn(k), lg = S.log[k] || {};
+    if (i === 0) { tot += list.filter(x => lg[x.id]).length; done += list.filter(x => lg[x.id]).length; continue; }
+    tot += list.length; done += list.filter(x => lg[x.id]).length;
+  }
+  return tot >= 3 ? done / tot : 1;
+}
+export const BOSS_RATE = 0.7;
+export const bossAllowed = () => bossRate() >= BOSS_RATE;
 
 // ---------- Monstros ----------
 // Fase → bioma. Depois da fase 70 os biomas se repetem no Modo Pesadelo.
@@ -236,7 +287,7 @@ export function biomeFor(st) {
 }
 export function slotKind(st = S.stage, idx = S.stageKills) {
   if (idx !== KILLS_PER_STAGE - 1) return 'normal';
-  if (st % 10 === 0) return 'boss';
+  if (st % 10 === 0) return bossAllowed() ? 'boss' : 'blocked';
   if (st % 10 === 5) return 'mini';
   return 'normal';
 }
@@ -255,10 +306,15 @@ export function mStats(st, key, kind) {
 }
 export function onKill(mon) {
   S.gold += mon.gold; S.kills++;
+  S.bestiary = S.bestiary || {}; const bk = mon.bkey || mon.key; if (bk) S.bestiary[bk] = (S.bestiary[bk] || 0) + 1;
+  if (mon.elite) S.eliteKills = (S.eliteKills || 0) + 1;
+  if (mon.key === 'abobora') { S.evt = S.evt || {}; S.evt.abobora = (S.evt.abobora || 0) + 1; }
+  if (mon.key === 'bonecoNeve') { S.evt = S.evt || {}; S.evt.boneco = true; }
   if (mon.kind === 'mini') S.miniKills++;
-  if (mon.kind === 'boss') { S.bossKills++; S.bosses[mon.name] = (S.bosses[mon.name] || 0) + 1; }
+  if (mon.kind === 'boss') { S.bossKills++; const bn = mon.baseName || mon.name; S.bosses[bn] = (S.bosses[bn] || 0) + 1; }
 }
-export function onSlotCleared() {
+export function onSlotCleared(gate) {
+  if (gate) { checkAch(); save(); return; }   // chefão bloqueado: continua na mesma fase
   S.stageKills++;
   if (S.stageKills >= KILLS_PER_STAGE) {
     S.stage++; S.stageKills = 0;
@@ -279,7 +335,7 @@ const COND = {
   k50: () => S.kills >= 50, k500: () => S.kills >= 500, mini: () => S.miniKills >= 1,
   boss1: () => !!S.bosses['Slime Colossal'], boss2: () => !!S.bosses['Faraó Esquecido'], st71: () => S.maxStage >= 71,
   st20: () => S.maxStage >= 20, lv5: () => S.level >= 5, lv10: () => S.level >= 10,
-  forja: () => !!S.forged, rest: () => S.restDays.some(d => d <= today())
+  forja: () => !!S.forged, andar: () => ((S.catDone && S.catDone.exe) || 0) >= 30, p100: () => (S.perfectDays || 0) >= 100, elite: () => (S.eliteKills || 0) >= 25, rest: () => S.restDays.some(d => d <= today())
 };
 export function checkAch() {
   checkPets();
@@ -291,6 +347,7 @@ export function checkAch() {
     if (a.relic && !S.relics.includes(a.relic)) S.relics.push(a.relic);
     bus.emit('ach', a);
   }
+  checkGear();
 }
 
 // ---------- Progresso offline ----------
@@ -300,10 +357,14 @@ export function offlineProgress() {
   if (el < 60 || isRest(today())) return null;
   const total = el, st0 = S.stage, H = heroStats();
   const dps = H.atk * (1 + H.crit) / H.atkInt;
-  let kills = 0, gold = 0, st = S.stage, sk = S.stageKills, guard = 0;
+  let kills = 0, gold = 0, st = S.stage, sk = S.stageKills, guard = 0, blocked = false;
   while (el > 0 && guard++ < 6000) {
     const kind = slotKind(st, sk);
     const b = biomeFor(st);
+    if (kind === 'blocked') {        // chefão bloqueado pela regra dos 70%: farma a fase
+      const fm = mStats(st, b.mons[0], 'normal'), ftk = fm.hp / dps + 2.4, n = Math.floor(el / ftk);
+      kills += n; gold += n * fm.gold; el = 0; blocked = true; break;
+    }
     const base = kind === 'boss' ? b.boss : kind === 'mini' ? b.mini : b.mons[guard % b.mons.length];
     const m = mStats(st, base, kind);
     const ft = m.hp / dps * (kind === 'boss' ? 1.4 : 1);
@@ -325,5 +386,5 @@ export function offlineProgress() {
   S.kills += kills; S.gold += gold; S.stage = st; S.stageKills = sk;
   if (st > S.maxStage) S.maxStage = st;
   checkAch(); save();
-  return { seconds: total, kills, gold, stage: st, advanced: st - st0 };
+  return { seconds: total, kills, gold, stage: st, advanced: st - st0, blocked };
 }

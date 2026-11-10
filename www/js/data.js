@@ -59,12 +59,66 @@ export const SHIELDS = [
 export const FORGE_MAX = 3;
 export const FORGE_BONUS = 0.15; // +15% por nível de forja
 
-// Relíquias: itens especiais raros dados por conquistas.
+// Relíquias: bônus passivos dados por conquistas.
 export const RELICS = {
-  disciplina: { n: 'Espada da Disciplina', d: '+10% de ataque e brilho dourado na arma', atk: 0.10 },
-  madrugador: { n: 'Capa do Madrugador',   d: '+8% de vida e uma capa vermelha',      hp: 0.08 },
-  cacador:    { n: 'Anel do Caçador',      d: '+5% de chance de crítico',              crit: 0.05 },
-  desbravador:{ n: 'Coroa do Desbravador', d: '+10% de vida',                          hp: 0.10 }
+  cacador:    { n: 'Anel do Caçador',      d: '+5% de chance de crítico', crit: 0.05 },
+  desbravador:{ n: 'Coroa do Desbravador', d: '+10% de vida',             hp: 0.10 }
+};
+
+// Espaços de equipamento (a pessoa escolhe o que vestir na Loja da vila).
+export const SLOTS = [
+  { k: 'w', n: 'Armas', one: 'Arma', icon: 'weapon' },
+  { k: 's', n: 'Escudos', one: 'Escudo', icon: 'shield' },
+  { k: 'h', n: 'Capacetes', one: 'Capacete', icon: 'helm' },
+  { k: 'c', n: 'Peitorais', one: 'Peitoral', icon: 'chest' },
+  { k: 'l', n: 'Calças e botas', one: 'Calças', icon: 'legs' },
+  { k: 'k', n: 'Capas', one: 'Capa', icon: 'cape' }
+];
+
+// Equipamentos de conquista: visual próprio + poder especial. Atributos acompanham o seu nível.
+// power: atkPct · hpPct · statPct (defesa e vida) · crit · block · speed · leech · noSlow · noFreeze · noBurn
+export const ACH_GEAR = [
+  { id: 'espDisc',   slot: 'w', n: 'Espada da Disciplina', how: '7 dias perfeitos seguidos',      power: { atkPct: 0.10 }, pd: '+10% de ataque',
+    vis: { blade: '#f2d070', edge: '#fff6c8', guard: '#9b6f1e', len: 15, glow: true, glowC: '#ffe08a' } },
+  { id: 'laminaOsso', slot: 'w', n: 'Lâmina de Osso',      how: 'Derrotar o Rei dos Ossos',       power: { crit: 0.08 }, pd: '+8% de crítico',
+    vis: { blade: '#e8e0c8', edge: '#ffffff', guard: '#4a2a6a', len: 16, glow: true, glowC: '#b493ff' } },
+  { id: 'escCac',    slot: 's', n: 'Escudo do Caçador',    how: 'Derrotar 500 monstros',          power: { block: 0.08 }, pd: '+8% de bloqueio',
+    vis: { main: '#3f7a3a', rim: '#2a2018', emb: '#e8c060' } },
+  { id: 'elmoFarao', slot: 'h', n: 'Elmo do Faraó',        how: 'Derrotar o Faraó Esquecido',     power: { noSlow: true }, pd: 'Imune a teia e lentidão',
+    vis: { main: '#e8b33c', dark: '#2f6fa8', light: '#ffe08a', shape: 'farao' } },
+  { id: 'coroaGelo', slot: 'h', n: 'Coroa de Gelo',        how: 'Derrotar a Rainha do Gelo',      power: { noFreeze: true }, pd: 'Imune a congelamento',
+    vis: { main: '#8ad0f0', dark: '#2a5aa8', light: '#ffffff', shape: 'gelo' } },
+  { id: 'gorroNatal', slot: 'h', n: 'Gorro de Natal',      how: 'Evento de Natal: derrotar o Boneco de Neve Gigante', power: { hpPct: 0.05 }, pd: '+5% de vida',
+    vis: { main: '#d83a3a', dark: '#8a1e1e', light: '#ffffff', shape: 'natal' } },
+  { id: 'escamas',   slot: 'c', n: 'Escamas de Dragão',    how: 'Derrotar o Dragão Ancestral',    power: { noBurn: true }, pd: 'Imune a fogo',
+    vis: { main: '#b8302a', dark: '#6a1418', light: '#f0a050' } },
+  { id: 'armLenda',  slot: 'c', n: 'Armadura da Lenda',    how: '100 dias perfeitos',             power: { statPct: 0.2 }, pd: '+20% de defesa e vida', boost: 1.3,
+    vis: { main: '#e8eaff', dark: '#8a8ab0', light: '#ffe08a' } },
+  { id: 'botasAnd',  slot: 'l', n: 'Botas do Andarilho',   how: '30 missões de Exercício',        power: { speed: 0.10 }, pd: 'Ataca 10% mais rápido',
+    vis: { main: '#4a8a5a', dark: '#2a5a3a', light: '#8ad0a0' } },
+  { id: 'capaMad',   slot: 'k', n: 'Capa do Madrugador',   how: '5 missões antes das 7h',         power: { hpPct: 0.08 }, pd: '+8% de vida',
+    vis: { a: '#b82c26', b: '#8a1e1a', c: '#e04a40' } },
+  { id: 'capaConde', slot: 'k', n: 'Capa do Conde',        how: 'Derrotar o Conde Vampiro',       power: { leech: 0.05 }, pd: 'Rouba 5% do dano como vida',
+    vis: { a: '#1a1022', b: '#0a0610', c: '#a8203a' } },
+  { id: 'capaAbobora', slot: 'k', n: 'Capa de Abóbora',    how: 'Evento de Halloween: derrotar 20 Abóboras Assombradas', power: { atkPct: 0.05 }, pd: '+5% de ataque',
+    vis: { a: '#e87a1a', b: '#a84a0a', c: '#ffb04a' } },
+  { id: 'capaLenda', slot: 'k', n: 'Capa Lendária',        how: 'Presente de aniversário',        power: { atkPct: 0.05, hpPct: 0.05 }, pd: '+5% de ataque e de vida',
+    vis: { a: '#e8b33c', b: '#9b6f1e', c: '#fff0a0', sparkle: true } }
+];
+
+// Mercador: capas só de visual (ouro) e poções.
+export const SHOP_CAPES = [
+  { id: 'capeAzul',   n: 'Capa Azul',     price: 300,  vis: { a: '#2f5ab8', b: '#1e3a80', c: '#5a8ae0' } },
+  { id: 'capeVerde',  n: 'Capa Verde',    price: 300,  vis: { a: '#2f8a3a', b: '#1e5a26', c: '#5ac06a' } },
+  { id: 'capeRoxa',   n: 'Capa Roxa',     price: 500,  vis: { a: '#6a3aa8', b: '#43246e', c: '#9a6ad8' } },
+  { id: 'capePreta',  n: 'Capa Sombria',  price: 800,  vis: { a: '#26222e', b: '#14121a', c: '#4a4458' } },
+  { id: 'capeBranca', n: 'Capa Real',     price: 1200, vis: { a: '#ece8f4', b: '#a8a2c0', c: '#ffffff' } },
+  { id: 'capeOuro',   n: 'Capa Dourada',  price: 2500, vis: { a: '#e8b33c', b: '#9b6f1e', c: '#fff0a0' } }
+];
+export const POTIONS = {
+  vida:  { n: 'Poção de Vida',          price: 150, c: '#e84a5a', d: 'Usada sozinha: se o herói cair, levanta com vida cheia' },
+  forca: { n: 'Poção de Força',         price: 120, c: '#ff8a2a', d: '+30% de ataque por 3 minutos' },
+  ferro: { n: 'Poção de Pele de Ferro', price: 120, c: '#8ab0d8', d: '+30% de defesa por 3 minutos' }
 };
 
 // Personalização do herói
@@ -84,7 +138,7 @@ export const MONSTERS = {
   aranha:  { n: 'Aranha', draw: 'aranha', pal: { a: '#6a4a3a', b: '#3e2a20', c: '#8a6a5a', e: '#ff4040', x: '#e0b040' }, hp: 0.85, dmg: 1, spd: 20, h: 13, trait: 'web' },
   coelho:  { n: 'Coelho Raivoso', draw: 'coelho', pal: { a: '#c9b8a6', b: '#9a8676' }, hp: 0.6, dmg: 0.8, spd: 26, h: 17, trait: 'fast' },
   chefeGoblin: { n: 'Chefe Goblin', draw: 'goblin', pal: { a: '#5a983a', b: '#2e2a1e', c: '#6a3a8a', e: '#ff4040', chief: true }, hp: 1.2, dmg: 1.1, spd: 12, h: 25 },
-  slimeRei: { n: 'Slime Colossal', draw: 'slimeG', big: true, front: 24, pal: SL('#5fc85a', '#a6f2a0', '#2f7a2c'), hp: 1, dmg: 1, spd: 10, h: 40 },
+  slimeRei: { n: 'Slime Colossal', draw: 'slimeG', big: true, front: 24, pal: SL('#5fc85a', '#a6f2a0', '#2f7a2c'), hp: 1, dmg: 1, spd: 10, h: 40, variant: { n: 'Slime Colossal Sombrio', pal: { a: '#6a3aa8', c: '#c8a0ff', b: '#3a1a6a' } } },
   // Deserto
   escorpiao: { n: 'Escorpião', draw: 'escorpiao', pal: { a: '#c0803a', b: '#8a5a2a', c: '#e0a860', x: '#e04040' }, hp: 1, dmg: 1.4, spd: 14, h: 17 },
   mumia:   { n: 'Múmia', draw: 'mumia', pal: { a: '#d8ccb0', b: '#a89a7a', c: '#ece2c8' }, hp: 1.55, dmg: 1, spd: 8, h: 28 },
@@ -92,14 +146,14 @@ export const MONSTERS = {
   centDeserto: { n: 'Centopeia do Deserto', draw: 'centopeia', pal: { a: '#d0702a', b: '#9a4a1a', c: '#f0a050', e: '#ffe04a', x: '#3a1a0a' }, hp: 1.1, dmg: 1.2, spd: 18, h: 11 },
   verme:   { n: 'Verme de Areia', draw: 'verme', pal: { a: '#b08050', b: '#8a5e36', c: '#c89a68', dirt: '#c9a060' }, hp: 1.3, dmg: 1.3, spd: 16, h: 30, burrow: true },
   escRei:  { n: 'Escorpião Rei', draw: 'escorpiao', pal: { a: '#3a3a4a', b: '#22222e', c: '#5a5a70', x: '#8a40e0', king: true }, hp: 1.2, dmg: 1.4, spd: 12, h: 18 },
-  farao:   { n: 'Faraó Esquecido', draw: 'faraoG', big: true, front: 24, pal: { a: '#d8ccb0', b: '#a89a7a', c: '#ece2c8', pharaoh: true }, hp: 1.3, dmg: 1, spd: 8, h: 72 },
+  farao:   { n: 'Faraó Esquecido', draw: 'faraoG', big: true, front: 24, pal: { a: '#d8ccb0', b: '#a89a7a', c: '#ece2c8', pharaoh: true }, hp: 1.3, dmg: 1, spd: 8, h: 72, variant: { n: 'Faraó Sombrio', pal: { a: '#5a5266', b: '#3a3444', c: '#7a7288', pharaoh: true } } },
   // Neve
   loboGelo: { n: 'Lobo de Gelo', draw: 'lobo', pal: { a: '#d8e4f0', b: '#8aa0c0', c: '#ffffff', e: '#58d4ff' }, hp: 1, dmg: 1.1, spd: 26, h: 18, trait: 'fast' },
   esqGelo: { n: 'Esqueleto Congelado', draw: 'esqueleto', pal: { a: '#cfe4f4', b: '#7a9ab8', e: '#58d4ff', ice: true, blade: '#bfe8ff' }, hp: 1.1, dmg: 1.1, spd: 12, h: 31, trait: 'freeze' },
   golem:   { n: 'Golem de Neve', draw: 'golem', pal: { a: '#e8f0f8', b: '#a8c0d8', c: '#8ad0f0', e: '#1a2a3a' }, hp: 1.7, dmg: 1.1, spd: 8, h: 30 },
   espirito: { n: 'Espírito Gélido', draw: 'espirito', pal: { a: '#bfe8ff', b: '#6aa8d8', e: '#1a3a6a' }, hp: 0.8, dmg: 1, spd: 18, h: 36, fly: true, trait: 'freeze' },
   yeti:    { n: 'Yeti', draw: 'yeti', pal: { a: '#e8eef6', b: '#a8b8cc', c: '#7a8aa0' }, hp: 1.3, dmg: 1.3, spd: 10, h: 33 },
-  rainhaGelo: { n: 'Rainha do Gelo', draw: 'rainhaG', big: true, front: 20, pal: { a: '#6aa8e8', b: '#2a5aa8', c: '#bfe8ff' }, hp: 1.1, dmg: 1.1, spd: 8, h: 78, trait: 'freeze' },
+  rainhaGelo: { n: 'Rainha do Gelo', draw: 'rainhaG', big: true, front: 20, pal: { a: '#6aa8e8', b: '#2a5aa8', c: '#bfe8ff' }, hp: 1.1, dmg: 1.1, spd: 8, h: 78, trait: 'freeze', variant: { n: 'Rainha das Sombras', pal: { a: '#7a4ab8', b: '#3a1a6a', c: '#c8a0ff' } } },
   // Caverna
   esqueleto: { n: 'Esqueleto', draw: 'esqueleto', pal: { a: '#e8e0c8', b: '#a89a78', e: '#ff5040' }, hp: 1, dmg: 1.1, spd: 13, h: 31 },
   arqueiro: { n: 'Arqueiro Esqueleto', draw: 'esqueleto', pal: { a: '#e8e0c8', b: '#a89a78', e: '#ff5040', bow: true }, hp: 0.8, dmg: 1, spd: 12, h: 31, trait: 'ranged', proj: 'flecha' },
@@ -108,14 +162,14 @@ export const MONSTERS = {
   goblinM: { n: 'Goblin Mineiro', draw: 'goblin', pal: { a: '#6a9a4a', b: '#3a3a2a', c: '#5a4a3a', e: '#ffe04a', miner: true }, hp: 1, dmg: 1.1, spd: 15, h: 25 },
   morcego: { n: 'Morcego', draw: 'morcego', pal: { a: '#4a3a5a', b: '#2e2240', c: '#6a5a7a', e: '#ff5050' }, hp: 0.8, dmg: 0.9, spd: 20, h: 36, fly: true },
   rainhaAranha: { n: 'Rainha Aranha', draw: 'aranha', pal: { a: '#5a2a7a', b: '#3a1a4e', c: '#8a5aaa', e: '#7af0c0', x: '#f2c14e', queen: true }, hp: 1.3, dmg: 1.2, spd: 14, h: 18, trait: 'web' },
-  reiOssos: { n: 'Rei dos Ossos', draw: 'reiG', big: true, front: 26, pal: { a: '#ece4cc', b: '#a89a78', e: '#b493ff', king: true }, hp: 1.2, dmg: 1.1, spd: 9, h: 74 },
+  reiOssos: { n: 'Rei dos Ossos', draw: 'reiG', big: true, front: 26, pal: { a: '#ece4cc', b: '#a89a78', e: '#b493ff', king: true }, hp: 1.2, dmg: 1.1, spd: 9, h: 74, variant: { n: 'Rei dos Ossos Dourado', pal: { a: '#e8c060', b: '#a8802a', e: '#ff5040', king: true } } },
   // Pântano
   zumbiP:  { n: 'Zumbi do Pântano', draw: 'zumbi', pal: { a: '#7a9a5a', b: '#5a7a3a', shirt: '#5a6a3a', pants: '#3a3a2a', hair: '#3a4a2a', e: '#e0e040', moss: true }, hp: 1.3, dmg: 1.1, spd: 9, h: 28 },
   sapo:    { n: 'Sapo Venenoso', draw: 'sapo', pal: { a: '#3aa84a', b: '#1e6a2a', c: '#a8e070', x: '#e040a0' }, hp: 0.9, dmg: 1.2, spd: 16, h: 14, trait: 'web' },
   planta:  { n: 'Planta Carnívora', draw: 'planta', pal: { a: '#c8304a', b: '#8a1a2e', c: '#ff6a7a', x: '#ffe0e0' }, hp: 1.2, dmg: 1.3, spd: 14, h: 30, burrow: true },
   bruxa:   { n: 'Bruxa', draw: 'bruxa', pal: { a: '#4a2a6a', b: '#2a1e3a' }, hp: 0.9, dmg: 1.2, spd: 12, h: 37, trait: 'ranged', proj: 'pocao' },
   hidra:   { n: 'Hidra', draw: 'hidra', pal: { a: '#3a8a6a', b: '#1e5a44', c: '#8ad0a0', e: '#ffe04a' }, hp: 1.3, dmg: 1.2, spd: 8, h: 38, trait: 'regen' },
-  serpente: { n: 'Serpente Gigante', draw: 'serpenteG', big: true, front: 24, pal: { a: '#5a8a3a', b: '#3a6a24', c: '#a0d070', e: '#ffe04a', x: '#e0c040', dirt: '#4a4a2a' }, hp: 1.2, dmg: 1.2, spd: 10, h: 100, burrow: true },
+  serpente: { n: 'Serpente Gigante', draw: 'serpenteG', big: true, front: 24, pal: { a: '#5a8a3a', b: '#3a6a24', c: '#a0d070', e: '#ffe04a', x: '#e0c040', dirt: '#4a4a2a' }, hp: 1.2, dmg: 1.2, spd: 10, h: 100, burrow: true, variant: { n: 'Serpente Albina', pal: { a: '#e8e0d0', c: '#ffffff', x: '#e04060', e: '#ff3040', dirt: '#4a4a2a' } } },
   // Castelo Sombrio
   lobisomem: { n: 'Lobisomem', draw: 'lobisomem', pal: { a: '#6a5a4a', b: '#4a3e32', c: '#9a8a78', e: '#ffd04a', x: '#3a4a6a' }, hp: 1.2, dmg: 1.2, spd: 20, h: 38, trait: 'fast' },
   vampiro: { n: 'Vampiro', draw: 'vampiro', pal: { a: '#e8dce8', b: '#1a1022', x: '#a8203a', e: '#ff2a3a' }, hp: 1, dmg: 1.1, spd: 14, h: 30, trait: 'drain' },
@@ -123,14 +177,17 @@ export const MONSTERS = {
   fantasma: { n: 'Fantasma', draw: 'espirito', pal: { a: '#e8e4f4', b: '#a8a0c8', e: '#2a1e3a' }, hp: 0.8, dmg: 1, spd: 18, h: 36, fly: true },
   morcegoV: { n: 'Morcego Vampiro', draw: 'morcego', pal: { a: '#5a1a2a', b: '#3a0e1a', c: '#8a2a3a', e: '#ffe04a' }, hp: 0.9, dmg: 1, spd: 22, h: 36, fly: true, trait: 'drain' },
   lobisomemAlfa: { n: 'Lobisomem Alfa', draw: 'lobisomem', pal: { a: '#3a3440', b: '#24202a', c: '#6a6078', e: '#ff3030', x: '#5a2030' }, hp: 1.3, dmg: 1.3, spd: 18, h: 38, trait: 'fast' },
-  conde:   { n: 'Conde Vampiro', draw: 'condeG', big: true, front: 22, pal: { a: '#f0e4f0', b: '#140a1a', x: '#c8203a', e: '#ff2a3a', count: true }, hp: 1.2, dmg: 1.1, spd: 10, h: 68, trait: 'drain' },
+  conde:   { n: 'Conde Vampiro', draw: 'condeG', big: true, front: 22, pal: { a: '#f0e4f0', b: '#140a1a', x: '#c8203a', e: '#ff2a3a', count: true }, hp: 1.2, dmg: 1.1, spd: 10, h: 68, trait: 'drain', variant: { n: 'Conde de Sangue', pal: { a: '#f0e4f0', b: '#5a0a14', x: '#1a0a1a', e: '#ffe04a', count: true } } },
   // Inferno
   diabrete: { n: 'Diabrete', draw: 'diabrete', pal: { a: '#d0402e', b: '#8a1e14', c: '#f07a5a' }, hp: 0.8, dmg: 1.1, spd: 22, h: 40, fly: true },
   caoInfernal: { n: 'Cão Infernal', draw: 'lobo', pal: { a: '#3a1a14', b: '#22100c', c: '#7a2a1a', e: '#ffb020', fire: true }, hp: 1.1, dmg: 1.3, spd: 26, h: 19, trait: 'fire' },
   demonio: { n: 'Demônio', draw: 'demonio', pal: { a: '#a82a2a', b: '#5a1414', c: '#d05040' }, hp: 1.5, dmg: 1.3, spd: 9, h: 44 },
   esqFogo: { n: 'Esqueleto Flamejante', draw: 'esqueleto', pal: { a: '#3a2a2a', b: '#1e1414', e: '#ffd04a', fire: true, blade: '#ff8a2a' }, hp: 1.1, dmg: 1.3, spd: 13, h: 33, trait: 'fire' },
   senhorChamas: { n: 'Senhor das Chamas', draw: 'elemental', pal: { a: '#e8601a', b: '#8a1e0a', c: '#ffb030' }, hp: 1.3, dmg: 1.4, spd: 10, h: 44, fly: true, trait: 'fire' },
-  dragao:  { n: 'Dragão Ancestral', draw: 'dragaoG', big: true, front: 50, pal: { a: '#a8282a', b: '#5a1018', c: '#f0a050', e: '#ffe04a', x: '#2a0a0a' }, hp: 1.3, dmg: 1.3, spd: 10, h: 112, fly: true, trait: 'fire' }
+  // Eventos
+  abobora: { n: 'Abóbora Assombrada', draw: 'abobora', pal: { a: '#e87a1a', b: '#a84a0a', c: '#ffb04a' }, hp: 1, dmg: 1, spd: 18, h: 20, event: 'halloween' },
+  bonecoNeve: { n: 'Boneco de Neve Gigante', draw: 'bonecoNeve', pal: {}, hp: 1.3, dmg: 1.2, spd: 9, h: 50, event: 'natal' },
+  dragao:  { n: 'Dragão Ancestral', draw: 'dragaoG', big: true, front: 50, pal: { a: '#a8282a', b: '#5a1018', c: '#f0a050', e: '#ffe04a', x: '#2a0a0a' }, hp: 1.3, dmg: 1.3, spd: 10, h: 112, fly: true, trait: 'fire', variant: { n: 'Dragão Negro', pal: { a: '#2e2a34', m: '#6a1420', bone: '#d8c8b0', c: '#8a2a2a', e: '#ff3020', x: '#c02020' } } }
 };
 
 // Biomas: 10 fases cada. mini = fase 5, boss = fase 10. Depois da fase 70 vem o Modo Pesadelo.
@@ -149,26 +206,29 @@ export const ACHIEVEMENTS = [
   { id: 't1',    n: 'Primeiro Passo',      d: 'Conclua sua primeira missão',            title: 'Aprendiz' },
   { id: 't25',   n: 'Disciplina de Ferro', d: 'Conclua 25 missões',                     title: 'Disciplinado' },
   { id: 't100',  n: 'Lenda da Rotina',     d: 'Conclua 100 missões',                    title: 'Lenda da Rotina' },
-  { id: 'cedo5', n: 'Madrugador',          d: 'Conclua 5 missões antes das 7h',         title: 'O Madrugador', relic: 'madrugador' },
+  { id: 'cedo5', n: 'Madrugador',          d: 'Conclua 5 missões antes das 7h',         title: 'O Madrugador', gear: 'capaMad' },
   { id: 'perf',  n: 'Dia Perfeito',        d: 'Cumpra todas as missões de um dia' },
   { id: 'str3',  n: 'Em Chamas',           d: '3 dias perfeitos seguidos',              title: 'Chama Acesa' },
-  { id: 'str7',  n: 'Hábito Forjado',      d: '7 dias perfeitos seguidos',              title: 'Mestre da Disciplina', relic: 'disciplina' },
+  { id: 'str7',  n: 'Hábito Forjado',      d: '7 dias perfeitos seguidos',              title: 'Mestre da Disciplina', gear: 'espDisc' },
   { id: 'pont20',n: 'Pontual',             d: 'Conclua 20 missões no horário',          title: 'Pontual' },
   { id: 'k50',   n: 'Caçador',             d: 'Derrote 50 monstros' },
-  { id: 'k500',  n: 'Exterminador',        d: 'Derrote 500 monstros',                   title: 'Exterminador', relic: 'cacador' },
+  { id: 'k500',  n: 'Exterminador',        d: 'Derrote 500 monstros',                   title: 'Exterminador', relic: 'cacador', gear: 'escCac' },
   { id: 'mini',  n: 'Quebra-Ossos',        d: 'Derrote um mini-chefão' },
   { id: 'boss1', n: 'Rei Caído',           d: 'Derrote o Slime Colossal',               title: 'Matador de Slimes' },
-  { id: 'boss2', n: 'Tumba Selada',        d: 'Derrote o Faraó Esquecido',              title: 'Caçador de Faraós' },
-  { id: 'boss3', n: 'Degelo',              d: 'Derrote a Rainha do Gelo',               title: 'Coração Quente', boss: 'Rainha do Gelo' },
-  { id: 'boss4', n: 'Ossos ao Pó',         d: 'Derrote o Rei dos Ossos',                title: 'Quebra-Coroas', boss: 'Rei dos Ossos' },
+  { id: 'boss2', n: 'Tumba Selada',        d: 'Derrote o Faraó Esquecido',              title: 'Caçador de Faraós' , gear: 'elmoFarao' },
+  { id: 'boss3', n: 'Degelo',              d: 'Derrote a Rainha do Gelo',               title: 'Coração Quente', boss: 'Rainha do Gelo' , gear: 'coroaGelo' },
+  { id: 'boss4', n: 'Ossos ao Pó',         d: 'Derrote o Rei dos Ossos',                title: 'Quebra-Coroas', boss: 'Rei dos Ossos' , gear: 'laminaOsso' },
   { id: 'boss5', n: 'Domador de Serpentes', d: 'Derrote a Serpente Gigante',            title: 'Domador de Serpentes', boss: 'Serpente Gigante' },
-  { id: 'boss6', n: 'Amanhecer',           d: 'Derrote o Conde Vampiro',                title: 'Caçador da Noite', boss: 'Conde Vampiro' },
-  { id: 'boss7', n: 'Matador de Dragões',  d: 'Derrote o Dragão Ancestral',             title: 'Matador de Dragões', boss: 'Dragão Ancestral' },
+  { id: 'boss6', n: 'Amanhecer',           d: 'Derrote o Conde Vampiro',                title: 'Caçador da Noite', boss: 'Conde Vampiro' , gear: 'capaConde' },
+  { id: 'boss7', n: 'Matador de Dragões',  d: 'Derrote o Dragão Ancestral',             title: 'Matador de Dragões', boss: 'Dragão Ancestral' , gear: 'escamas' },
   { id: 'st20',  n: 'Desbravador',         d: 'Chegue à fase 20',                       title: 'Desbravador', relic: 'desbravador' },
   { id: 'st71',  n: 'Pesadelo',            d: 'Chegue ao Modo Pesadelo (fase 71)',      title: 'Lenda Viva' },
   { id: 'lv5',   n: 'Aventureiro',         d: 'Alcance o nível 5' },
   { id: 'lv10',  n: 'Herói',               d: 'Alcance o nível 10',                     title: 'Herói' },
   { id: 'forja', n: 'Na Bigorna',          d: 'Forje um equipamento' },
+  { id: 'andar', n: 'Andarilho',           d: 'Conclua 30 missões de Exercício',        title: 'Andarilho', gear: 'botasAnd' },
+  { id: 'p100',  n: 'Lenda Viva',          d: 'Cumpra 100 dias perfeitos',              title: 'A Lenda', gear: 'armLenda' },
+  { id: 'elite', n: 'Caçador de Elite',    d: 'Derrote 25 monstros de elite',           title: 'Caçador de Elite' },
   { id: 'rest',  n: 'Ao Pé da Fogueira',   d: 'Tire um dia de descanso planejado' }
 ];
 

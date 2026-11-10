@@ -28,7 +28,13 @@ jobs:
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
 
+      # O jogo fica sabendo a própria versão (para o aviso de atualização).
+      - name: Número da versão
+        run: echo "export const VERSION = '3.0.${{ github.run_number }}';" > www/js/version.js
+
       - name: Criar projeto Android
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
           npx cap add android
           node scripts/setup-android.mjs
@@ -55,10 +61,8 @@ jobs:
       - name: Publicar em Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.${{ github.run_number }}
-          name: Rotina RPG v1.1.${{ github.run_number }}
-          body: |
-            Baixe o **RotinaRPG.apk** abaixo pelo celular, abra o arquivo e permita instalar de fontes desconhecidas.
-            Para atualizar, é só instalar o novo por cima: o progresso continua.
+          tag_name: v3.0.${{ github.run_number }}
+          name: Rotina RPG 3.0.${{ github.run_number }}
+          body_path: CHANGES.md
           files: RotinaRPG.apk
           make_latest: true

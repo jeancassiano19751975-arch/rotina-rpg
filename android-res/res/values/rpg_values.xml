@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hero_bg">#141A36</color>
+    <string name="rpg_widget_desc">Seu herói e a próxima missão</string>
+</resources>
