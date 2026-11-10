@@ -136,6 +136,23 @@ const run = Number(process.env.GITHUB_RUN_NUMBER || 0);
 const gradle = path.join(root, 'android', 'app', 'build.gradle');
 let g = fs.readFileSync(gradle, 'utf8');
 g = g.replace(/versionCode \d+/, 'versionCode ' + (300 + run)).replace(/versionName "[^"]*"/, `versionName "3.0.${run}"`);
+// assinatura fixa: o APK sempre sai com a chave do projeto (android-res/debug.keystore),
+// assim toda versão nova instala por cima da anterior.
+if (!g.includes('signingConfigs')) {
+  g = g.replace(/android\s*\{/, `android {
+    signingConfigs {
+        fixa {
+            storeFile file('../../android-res/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.fixa }
+    }`);
+}
 fs.writeFileSync(gradle, g);
-console.log('✔ Versão 3.0.' + run);
+if (!g.includes('signingConfigs.fixa')) { console.error('✖ Não consegui fixar a assinatura no build.gradle'); process.exit(1); }
+console.log('✔ Versão 3.0.' + run + ' com assinatura fixa');
 console.log('Pronto! Agora rode: npx cap sync android');

@@ -1,3 +1,8 @@
+Versão 3.2: assinatura fixa de verdade
+
+- Toda versão nova agora sai com a mesma assinatura e instala por cima da anterior, sem perder o progresso
+- (Esta é a última vez que precisa fazer backup, desinstalar e instalar de novo)
+
 Versão 3.1: correções da Vila
 
 - A Vila ficou bem mais leve: o jogo não trava mais ao entrar no Ferreiro, os botões respondem na hora e dá para voltar para a Loja

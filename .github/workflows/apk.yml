@@ -53,6 +53,12 @@ jobs:
           ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk ../RotinaRPG.apk
 
+      # Confere a assinatura: se não for a chave do projeto, para aqui (assim nunca sai APK que não instala por cima).
+      - name: Conferir assinatura
+        run: |
+          keytool -printcert -jarfile RotinaRPG.apk | tee cert.txt
+          grep -q "71:86:3F:D4:0D:E3:71:FD" cert.txt || (echo "Assinatura errada!" && exit 1)
+
       - uses: actions/upload-artifact@v4
         with:
           name: RotinaRPG-apk
