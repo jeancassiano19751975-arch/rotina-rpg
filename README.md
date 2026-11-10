@@ -1,6 +1,15 @@
-# Rotina RPG — Versão 3
+# Rotina RPG — Versão 4
 
 Cumpra sua rotina na vida real e seu herói fica mais forte no jogo.
+
+## Novidades da 4
+- Chefões e mini-chefões com os desenhos do Jean (PNG em `www/assets/monsters/`, animados no código; quadros do PixelLab em `anim/`)
+- Biomas Céu e Templo Antigo (Pesadelo agora começa na fase 91)
+- Herói ou heroína, 6 penteados, classes Guerreiro, Mago e Arqueiro
+- Música 8-bit e efeitos gerados no próprio jogo (`audio.js`)
+- Calendário de 7 dias, desafio do dia, combo, cartas, gemas, resumo do mês (`daily.js`)
+- História em capítulos com cenas animadas e Livro de Histórias (`story.js`)
+- Renascer, Casa do herói, Masmorra da Semana e Chefão do Mês
 
 ## Novidades da 3
 - **Vila** (aba nova): Loja (ver e escolher o que vestir), Ferreiro (forja por peça, até +3), Mercador (capas e poções, nível 3) e Biblioteca (bestiário, depois do 1º mini-chefão)
@@ -101,6 +110,9 @@ www/
     events.js      eventos do calendário e dia/noite
     week.js        missões da semana, foco, diário, resumo, check-in
     native.js      ponte com o Android: ícone, widget, atualização
+    audio.js       música 8-bit e efeitos
+    daily.js       calendário, desafio, combo, cartas, gemas, mês, renascer, masmorra, chefão do mês
+    story.js       história em capítulos
     onboarding.js  primeira abertura
     mentor.js      Conselho do Mestre: perguntas e rotina sugerida
     notify.js      notificações, permissões, backup no Android

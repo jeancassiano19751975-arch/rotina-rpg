@@ -1,6 +1,6 @@
 // Inicialização: carrega o estado, roda a primeira abertura, liga jogo, interface e notificações.
 import { S, bus, load, save, today, nowMin } from './state.js';
-import { CATS, ATTRS, ACH_GEAR } from './data.js';
+import { CATS, ATTRS, ACH_GEAR, BIOMES } from './data.js';
 import { isBirthday } from './events.js';
 import { checkGear, refundEmptyForge } from './gear.js';
 import { migrateGear, checkAch, rollover, offlineProgress, completeTask, isRest, tasksOn, weekRate, fmt } from './rules.js';
@@ -8,6 +8,7 @@ import { startGame, float, burst, banner, queueChest, fullHeal, shakeScreen, pet
 import { GY } from './sprites.js';
 import { renderAll, renderHUD, renderNext, initTabs, onChange, toast, modal, tick, refreshPerms, tickFocus, goTab, editTask } from './ui.js';
 import { applyQueue, syncIcon, syncWidget, checkUpdate, playIntro } from './native.js';
+import { unlock as unlockStory, syncStory, playQueued } from './story.js';
 import { ensureWeek, pendingCheckin, markCheckin, pauseTask, heroComment } from './week.js';
 import { runOnboarding } from './onboarding.js';
 import { initNotifications, reschedule, onAction, snooze, isNative, scheduleFocusEnd } from './notify.js';
@@ -16,23 +17,7 @@ import { phrase } from './phrases.js';
 const HX = 96;
 
 // ---------- sons do jogo (só depois de interação) ----------
-let actx = null;
-function blip(notes, type = 'square', vol = 0.05) {
-  try {
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    notes.forEach(([f, d, at]) => {
-      const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + at;
-      o.type = type; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-      o.connect(g); g.connect(actx.destination); o.start(t0); o.stop(t0 + d + 0.02);
-    });
-  } catch (e) {}
-}
-const sfx = {
-  done: () => blip([[659, .08, 0], [880, .12, .08]]),
-  level: () => blip([[523, .1, 0], [659, .1, .1], [784, .1, .2], [1047, .25, .3]]),
-  chest: () => blip([[392, .1, 0], [523, .1, .12], [784, .3, .24]], 'triangle', .07)
-};
+import { SFX as sfx } from './audio.js';
 
 // ---------- eventos do jogo ----------
 bus.on('task-done', ev => {
@@ -44,6 +29,16 @@ bus.on('task-done', ev => {
   sfx.done();
   petCheer();
   toast(phrase(ev.late ? 'atraso' : 'feito') || ('Missão cumprida! +' + ev.xp + ' XP'));
+  if (ev.combos >= 2) float(HX + 26, GY - 64, 'COMBO ×' + (1 + Math.min(10, ev.combos) * 0.05).toFixed(2).replace(/0$/, ''), '#ffb04a');
+  if (ev.cal) {
+    setTimeout(() => toast('Calendário, dia ' + ev.cal.day + ' de 7: ' + ev.cal.txt), 900);
+    if (ev.cal.big) queueChest({ kind: 'surprise', item: { type: 'gold' }, name: 'BAÚ DO 7º DIA' });
+  }
+  if (ev.wb) {
+    float(HX + 60, GY - 70, 'TITÃ -' + ev.wb.dmg, '#ff8ad8', true);
+    if (ev.wb.reward) setTimeout(() => { toast('Você derrotou o Chefão do Mês! ' + ev.wb.reward); queueChest({ kind: 'surprise', item: { type: 'gold' }, name: 'CHEFÃO DO MÊS DERROTADO' }); }, 2200);
+  }
+  if (ev.dc) setTimeout(() => { toast('Desafio do dia cumprido! ' + ev.dc); sfx.chest(); }, 1600);
   if (ev.perfect) {
     setTimeout(() => toast('Dia perfeito! Sequência de ' + S.streak + ' dia(s)'), 300);
     if (S.streak >= 3) setTimeout(() => toast(phrase('sequencia')), 600);
@@ -51,14 +46,18 @@ bus.on('task-done', ev => {
   reschedule();
   syncWidget();
 });
+bus.on('gem', g => toast('O chefão deixou cair uma gema! Encaixe na arma no Ferreiro da Vila.'));
+bus.on('card', c => toast('Carta nova no álbum: ' + c.name + '! Veja na Biblioteca da Vila.'));
+bus.on('card-set', sets => toast('Coleção completa: ' + sets.join(', ') + '! +3% de ataque para sempre.'));
 bus.on('levelup', lv => { banner('NÍVEL ' + lv + '!', '#f2c14e'); burst(HX, GY - 14, '#ffe08a', 26); fullHeal(); sfx.level(); toast(phrase('nivel') || 'Nível ' + lv + '!'); renderHUD(); });
 bus.on('chest', ev => { queueChest(ev); setTimeout(sfx.chest, 1200); });
 bus.on('pet', pt => { queueChest({ kind: 'pet', item: pt, name: pt.n }); setTimeout(() => toast('Novo pet: ' + pt.n + '! ' + pt.d + '.'), 1500); });
 bus.on('ach', a => { toast('Conquista: ' + a.n + (a.title ? ' · título "' + a.title + '"' : '')); });
-bus.on('stage', st => { renderHUD(); });
+bus.on('stage', st => { renderHUD(); if (st === BIOMES.length * 10 + 1 && unlockStory('pesadelo')) setTimeout(playQueued, 2500); });
+bus.on('story', () => setTimeout(playQueued, 3000));
 bus.on('kill', () => { renderHUD(); });
 bus.on('potion-used', () => { toast('A Poção de Vida salvou seu herói!'); sfx.level(); renderHUD(); });
-bus.on('forged', () => blip([[220, .06, 0], [1760, .05, .02], [220, .06, .25], [1760, .05, .27]], 'square', .05));
+bus.on('forged', () => sfx.forge());
 bus.on('focus', f => scheduleFocusEnd(f));
 bus.on('hero-death', () => { toast(phrase('queda') || 'Seu herói caiu e recuou uma fase.'); renderHUD(); });
 
@@ -151,6 +150,7 @@ async function boot() {
   await fromNotifications();
   rollover();
   if (!S.onboarded) await runOnboarding();
+  syncStory();
   initTabs();
   checkAch();
   const away = offlineProgress();
@@ -167,6 +167,7 @@ async function boot() {
       actions: [{ label: 'Coletar', cls: 'gold-btn', fn: () => { burst(HX, GY - 14, '#f2c14e', 24); renderHUD(); dayPhrases(); setTimeout(checkin, 600); } }]
     });
   } else { setTimeout(dayPhrases, 800); setTimeout(checkin, 1400); }
+  setTimeout(playQueued, 2600);
   setInterval(tickFocus, 1000);
   syncIcon(); syncWidget(true);
   checkUpdate().then(u => { if (u) renderAll(); });
@@ -184,6 +185,7 @@ async function boot() {
   document.addEventListener('visibilitychange', async () => {
     if (document.hidden) { save(); syncWidget(); syncIcon(); return; }
     await fromNotifications();
+    setTimeout(playQueued, 1500);
     const a = offlineProgress();
     if (rollover()) reschedule();
     renderAll();

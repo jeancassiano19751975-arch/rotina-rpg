@@ -258,3 +258,58 @@ canvas#scene, canvas#vila-cv { display: block; width: 100%; height: auto; aspect
 .intro canvas { width: 240px; height: 240px; image-rendering: pixelated; }
 .intro b { font-family: var(--display); font-size: 34px; color: var(--gold); text-shadow: 3px 3px 0 var(--shadow); letter-spacing: .04em; }
 .intro.out { opacity: 0; pointer-events: none; }
+
+/* Ajustes: aparência do herói */
+.hero-edit { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: start; }
+.hero-edit canvas { width: 120px; height: 132px; image-rendering: pixelated; background: var(--shadow); border: 2px solid var(--line); }
+.seg-wrap .btn[aria-pressed="true"] { background: var(--gold); color: #2a1d05; }
+
+/* Calendário, desafio do dia, combo e mês */
+.daily { display: grid; gap: 8px; margin-bottom: 12px; }
+.cal-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-d { background: var(--panel2); border: 2px solid var(--line); padding: 4px 2px; display: grid; justify-items: center; gap: 1px; text-align: center; }
+.cal-d b { font-family: var(--display); font-size: 12px; color: var(--muted); }
+.cal-d span { font-size: 18px; line-height: 1.1; }
+.cal-d small { font-size: 9px; color: var(--muted); line-height: 1.1; }
+.cal-d.got { opacity: .5; border-color: var(--grass); }
+.cal-d.cur { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-d) inset; }
+.cal-d.big { background: #3a2f5a; }
+.dc, .combo { background: var(--panel2); border: 2px solid var(--line); padding: 8px 10px; display: grid; gap: 2px; }
+.dc.ok { border-color: var(--grass); }
+.dc b, .combo b { font-weight: 500; }
+.combo b { color: var(--ember); }
+.month summary { cursor: pointer; list-style: none; margin-top: 10px; }
+.month summary::before { content: '▸ '; color: var(--gold); }
+.month[open] summary::before { content: '▾ '; }
+.mgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin: 8px 0 4px; max-width: 280px; }
+.mgrid i { aspect-ratio: 1; border: 1px solid var(--line); }
+.m-p { background: var(--grass); } .m-h { background: var(--gold); } .m-z { background: var(--shadow); } .m-r { background: var(--ember); } .m-n { background: var(--panel2); } .m-f { background: transparent; border-style: dashed !important; }
+.mstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.mstats div { background: var(--panel2); border: 2px solid var(--line); padding: 6px; text-align: center; display: grid; }
+.mstats b { font-family: var(--display); font-weight: 500; font-size: 15px; color: var(--gold); }
+.mstats span { font-size: 11px; color: var(--muted); }
+.v-ic.gem { position: relative; }
+.v-ic.gem::after { content: ''; position: absolute; inset: 9px; background: var(--g); clip-path: polygon(50% 0, 100% 35%, 80% 100%, 20% 100%, 0 35%); box-shadow: inset 4px 4px 0 var(--gl); }
+.bst { position: relative; }
+.bst.card { border-color: var(--gold-d); }
+.cardb { position: absolute; top: 2px; right: 4px; font-style: normal; font-size: 11px; }
+
+/* Cenas da história */
+.story { position: fixed; inset: 0; z-index: 90; background: rgba(5,7,20,.92); display: grid; place-items: center; padding: 12px; transition: opacity .35s; cursor: pointer; }
+.story.out { opacity: 0; }
+.st-wrap { position: relative; width: min(100%, 720px); display: grid; gap: 8px; }
+.st-wrap canvas { width: 100%; height: auto; aspect-ratio: 320/150; image-rendering: pixelated; border: 3px solid var(--line); }
+.st-title { font-family: var(--display); color: var(--gold); font-size: 16px; text-align: center; }
+.st-box { background: var(--panel); border: 3px solid var(--gold-d); padding: 10px 12px; min-height: 104px; display: grid; gap: 4px; align-content: start; }
+.st-who { font-family: var(--display); color: var(--gold); font-weight: 500; }
+.st-txt { margin: 0; font-size: 16px; line-height: 1.45; }
+.st-txt.narr { font-style: italic; color: var(--muted); }
+.st-next { justify-self: end; font-size: 11px; color: var(--dim); }
+.st-skip { position: absolute; top: 8px; right: 8px; }
+button.eq.chap { width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.chap-ic { display: grid; place-items: center; color: var(--gold); font-size: 18px; }
+.wb { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; background: #2a1a3a; border: 2px solid #8a3a6a; padding: 8px 10px; margin: 10px 0; }
+.wb.ok { border-color: var(--grass); }
+.wb canvas { width: 96px; height: 80px; image-rendering: pixelated; }
+.wb b { display: block; font-weight: 500; margin: 2px 0 4px; }

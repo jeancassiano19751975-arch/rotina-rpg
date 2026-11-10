@@ -122,6 +122,18 @@ export const POTIONS = {
 };
 
 // Personalização do herói
+// Herói ou heroína, penteados e classes (Versão 4).
+export const HAIR_STYLES = ['Curto', 'Espetado', 'Rabo de cavalo', 'Longo', 'Coque', 'Trança'];
+export const CLASSES = {
+  guerreiro: { n: 'Guerreiro', nf: 'Guerreira', d: 'Espada e escudo. +10% de vida e +10% de defesa.', wn: 'Espada' },
+  mago:      { n: 'Mago',      nf: 'Maga',      d: 'Cajado que lança magia de longe. +15% de ataque, -10% de vida.', wn: 'Cajado' },
+  arqueiro:  { n: 'Arqueiro',  nf: 'Arqueira',  d: 'Arco e flechas de longe. +8% de crítico e ataca 10% mais rápido.', wn: 'Arco' }
+};
+// Nome da arma de nível conforme a classe (as cores e o poder são os mesmos).
+export const CLASS_WEAPON_NAMES = {
+  mago: ['Cajado de Madeira', 'Cajado de Cobre', 'Cajado de Ferro', 'Cajado de Ouro', 'Cajado da Noite', 'Cajado Estelar'],
+  arqueiro: ['Arco de Madeira', 'Arco de Cobre', 'Arco de Ferro', 'Arco de Ouro', 'Arco da Noite', 'Arco Estelar']
+};
 export const SKINS = ['#f3c9a0', '#e0a878', '#b97a4e', '#8a5532', '#5e3a22'];
 export const HAIRS = ['#2a1c14', '#5a3a20', '#a8682e', '#e8c060', '#d8d8e0', '#c83a3a'];
 export const CLOTHES = ['#3d7bd9', '#3faa5a', '#c8443a', '#8a5ad0', '#e09a2a', '#3a3a4a'];
@@ -137,23 +149,23 @@ export const MONSTERS = {
   goblin:  { n: 'Goblin', draw: 'goblin', pal: { a: '#6aa84a', b: '#3e3a2a', c: '#8a5a2a', e: '#ffe04a' }, hp: 0.8, dmg: 1, spd: 16, h: 25, trait: 'ranged', proj: 'lanca' },
   aranha:  { n: 'Aranha', draw: 'aranha', pal: { a: '#6a4a3a', b: '#3e2a20', c: '#8a6a5a', e: '#ff4040', x: '#e0b040' }, hp: 0.85, dmg: 1, spd: 20, h: 13, trait: 'web' },
   coelho:  { n: 'Coelho Raivoso', draw: 'coelho', pal: { a: '#c9b8a6', b: '#9a8676' }, hp: 0.6, dmg: 0.8, spd: 26, h: 17, trait: 'fast' },
-  chefeGoblin: { n: 'Chefe Goblin', draw: 'goblin', pal: { a: '#5a983a', b: '#2e2a1e', c: '#6a3a8a', e: '#ff4040', chief: true }, hp: 1.2, dmg: 1.1, spd: 12, h: 25 },
-  slimeRei: { n: 'Slime Colossal', draw: 'slimeG', big: true, front: 24, pal: SL('#5fc85a', '#a6f2a0', '#2f7a2c'), hp: 1, dmg: 1, spd: 10, h: 40, variant: { n: 'Slime Colossal Sombrio', pal: { a: '#6a3aa8', c: '#c8a0ff', b: '#3a1a6a' } } },
+  chefeGoblin: { n: 'Chefe Goblin', draw: 'goblin', pal: { a: '#5a983a', b: '#2e2a1e', c: '#6a3a8a', e: '#ff4040', chief: true }, hp: 1.2, dmg: 1.1, spd: 12, h: 25, img: 'chefeGoblin', imgK: 1, imgBot: 59, big: true, front: 39, h: 56 },
+  slimeRei: { n: 'Slime Colossal', draw: 'slimeG', big: true, front: 24, pal: SL('#5fc85a', '#a6f2a0', '#2f7a2c'), hp: 1, dmg: 1, spd: 10, h: 40, variant: { imgFilter: 'hue-rotate(200deg) saturate(1.3)', n: 'Slime Colossal Sombrio', pal: { a: '#6a3aa8', c: '#c8a0ff', b: '#3a1a6a' } }, img: 'slimeRei', imgK: 2, imgBot: 61, big: true, front: 80, h: 118 },
   // Deserto
   escorpiao: { n: 'Escorpião', draw: 'escorpiao', pal: { a: '#c0803a', b: '#8a5a2a', c: '#e0a860', x: '#e04040' }, hp: 1, dmg: 1.4, spd: 14, h: 17 },
   mumia:   { n: 'Múmia', draw: 'mumia', pal: { a: '#d8ccb0', b: '#a89a7a', c: '#ece2c8' }, hp: 1.55, dmg: 1, spd: 8, h: 28 },
   abutre:  { n: 'Abutre', draw: 'abutre', pal: { a: '#5a4030', b: '#3e2c20' }, hp: 0.9, dmg: 1.15, spd: 18, h: 38, fly: true },
   centDeserto: { n: 'Centopeia do Deserto', draw: 'centopeia', pal: { a: '#d0702a', b: '#9a4a1a', c: '#f0a050', e: '#ffe04a', x: '#3a1a0a' }, hp: 1.1, dmg: 1.2, spd: 18, h: 11 },
   verme:   { n: 'Verme de Areia', draw: 'verme', pal: { a: '#b08050', b: '#8a5e36', c: '#c89a68', dirt: '#c9a060' }, hp: 1.3, dmg: 1.3, spd: 16, h: 30, burrow: true },
-  escRei:  { n: 'Escorpião Rei', draw: 'escorpiao', pal: { a: '#3a3a4a', b: '#22222e', c: '#5a5a70', x: '#8a40e0', king: true }, hp: 1.2, dmg: 1.4, spd: 12, h: 18 },
-  farao:   { n: 'Faraó Esquecido', draw: 'faraoG', big: true, front: 24, pal: { a: '#d8ccb0', b: '#a89a7a', c: '#ece2c8', pharaoh: true }, hp: 1.3, dmg: 1, spd: 8, h: 72, variant: { n: 'Faraó Sombrio', pal: { a: '#5a5266', b: '#3a3444', c: '#7a7288', pharaoh: true } } },
+  escRei:  { n: 'Escorpião Rei', draw: 'escorpiao', pal: { a: '#3a3a4a', b: '#22222e', c: '#5a5a70', x: '#8a40e0', king: true }, hp: 1.2, dmg: 1.4, spd: 12, h: 18, img: 'escorpiaoRei', imgK: 1, imgBot: 60, big: true, front: 42, h: 57 },
+  farao:   { n: 'Faraó Esquecido', draw: 'faraoG', big: true, front: 24, pal: { a: '#d8ccb0', b: '#a89a7a', c: '#ece2c8', pharaoh: true }, hp: 1.3, dmg: 1, spd: 8, h: 72, variant: { imgFilter: 'grayscale(.7) brightness(.65) contrast(1.2)', n: 'Faraó Sombrio', pal: { a: '#5a5266', b: '#3a3444', c: '#7a7288', pharaoh: true } }, img: 'farao', imgK: 2, imgBot: 62, big: true, front: 67, h: 122 },
   // Neve
   loboGelo: { n: 'Lobo de Gelo', draw: 'lobo', pal: { a: '#d8e4f0', b: '#8aa0c0', c: '#ffffff', e: '#58d4ff' }, hp: 1, dmg: 1.1, spd: 26, h: 18, trait: 'fast' },
   esqGelo: { n: 'Esqueleto Congelado', draw: 'esqueleto', pal: { a: '#cfe4f4', b: '#7a9ab8', e: '#58d4ff', ice: true, blade: '#bfe8ff' }, hp: 1.1, dmg: 1.1, spd: 12, h: 31, trait: 'freeze' },
   golem:   { n: 'Golem de Neve', draw: 'golem', pal: { a: '#e8f0f8', b: '#a8c0d8', c: '#8ad0f0', e: '#1a2a3a' }, hp: 1.7, dmg: 1.1, spd: 8, h: 30 },
   espirito: { n: 'Espírito Gélido', draw: 'espirito', pal: { a: '#bfe8ff', b: '#6aa8d8', e: '#1a3a6a' }, hp: 0.8, dmg: 1, spd: 18, h: 36, fly: true, trait: 'freeze' },
-  yeti:    { n: 'Yeti', draw: 'yeti', pal: { a: '#e8eef6', b: '#a8b8cc', c: '#7a8aa0' }, hp: 1.3, dmg: 1.3, spd: 10, h: 33 },
-  rainhaGelo: { n: 'Rainha do Gelo', draw: 'rainhaG', big: true, front: 20, pal: { a: '#6aa8e8', b: '#2a5aa8', c: '#bfe8ff' }, hp: 1.1, dmg: 1.1, spd: 8, h: 78, trait: 'freeze', variant: { n: 'Rainha das Sombras', pal: { a: '#7a4ab8', b: '#3a1a6a', c: '#c8a0ff' } } },
+  yeti:    { n: 'Yeti', draw: 'yeti', pal: { a: '#e8eef6', b: '#a8b8cc', c: '#7a8aa0' }, hp: 1.3, dmg: 1.3, spd: 10, h: 33, img: 'yeti', imgK: 1, imgBot: 62, big: true, front: 41, h: 62 },
+  rainhaGelo: { n: 'Rainha do Gelo', draw: 'rainhaG', big: true, front: 20, pal: { a: '#6aa8e8', b: '#2a5aa8', c: '#bfe8ff' }, hp: 1.1, dmg: 1.1, spd: 8, h: 78, trait: 'freeze', variant: { imgFilter: 'hue-rotate(70deg) saturate(1.4) brightness(.8)', n: 'Rainha das Sombras', pal: { a: '#7a4ab8', b: '#3a1a6a', c: '#c8a0ff' } }, img: 'rainhaGelo', imgK: 2, imgBot: 60, big: true, front: 72, h: 118 },
   // Caverna
   esqueleto: { n: 'Esqueleto', draw: 'esqueleto', pal: { a: '#e8e0c8', b: '#a89a78', e: '#ff5040' }, hp: 1, dmg: 1.1, spd: 13, h: 31 },
   arqueiro: { n: 'Arqueiro Esqueleto', draw: 'esqueleto', pal: { a: '#e8e0c8', b: '#a89a78', e: '#ff5040', bow: true }, hp: 0.8, dmg: 1, spd: 12, h: 31, trait: 'ranged', proj: 'flecha' },
@@ -161,36 +173,50 @@ export const MONSTERS = {
   centPedra: { n: 'Centopeia das Pedras', draw: 'centopeia', pal: { a: '#7a7488', b: '#4e4a5a', c: '#a8a2b8', e: '#7af0c0', x: '#2a2834' }, hp: 1.2, dmg: 1.2, spd: 18, h: 11 },
   goblinM: { n: 'Goblin Mineiro', draw: 'goblin', pal: { a: '#6a9a4a', b: '#3a3a2a', c: '#5a4a3a', e: '#ffe04a', miner: true }, hp: 1, dmg: 1.1, spd: 15, h: 25 },
   morcego: { n: 'Morcego', draw: 'morcego', pal: { a: '#4a3a5a', b: '#2e2240', c: '#6a5a7a', e: '#ff5050' }, hp: 0.8, dmg: 0.9, spd: 20, h: 36, fly: true },
-  rainhaAranha: { n: 'Rainha Aranha', draw: 'aranha', pal: { a: '#5a2a7a', b: '#3a1a4e', c: '#8a5aaa', e: '#7af0c0', x: '#f2c14e', queen: true }, hp: 1.3, dmg: 1.2, spd: 14, h: 18, trait: 'web' },
-  reiOssos: { n: 'Rei dos Ossos', draw: 'reiG', big: true, front: 26, pal: { a: '#ece4cc', b: '#a89a78', e: '#b493ff', king: true }, hp: 1.2, dmg: 1.1, spd: 9, h: 74, variant: { n: 'Rei dos Ossos Dourado', pal: { a: '#e8c060', b: '#a8802a', e: '#ff5040', king: true } } },
+  rainhaAranha: { n: 'Rainha Aranha', draw: 'aranha', pal: { a: '#5a2a7a', b: '#3a1a4e', c: '#8a5aaa', e: '#7af0c0', x: '#f2c14e', queen: true }, hp: 1.3, dmg: 1.2, spd: 14, h: 18, trait: 'web', img: 'rainhaAranha', imgK: 1, imgBot: 56, big: true, front: 42, h: 48 },
+  reiOssos: { n: 'Rei dos Ossos', draw: 'reiG', big: true, front: 26, pal: { a: '#ece4cc', b: '#a89a78', e: '#b493ff', king: true }, hp: 1.2, dmg: 1.1, spd: 9, h: 74, variant: { imgFilter: 'sepia(1) saturate(2.6) brightness(1.1)', n: 'Rei dos Ossos Dourado', pal: { a: '#e8c060', b: '#a8802a', e: '#ff5040', king: true } }, img: 'reiOssos', imgK: 2, imgBot: 60, big: true, front: 76, h: 114 },
   // Pântano
   zumbiP:  { n: 'Zumbi do Pântano', draw: 'zumbi', pal: { a: '#7a9a5a', b: '#5a7a3a', shirt: '#5a6a3a', pants: '#3a3a2a', hair: '#3a4a2a', e: '#e0e040', moss: true }, hp: 1.3, dmg: 1.1, spd: 9, h: 28 },
   sapo:    { n: 'Sapo Venenoso', draw: 'sapo', pal: { a: '#3aa84a', b: '#1e6a2a', c: '#a8e070', x: '#e040a0' }, hp: 0.9, dmg: 1.2, spd: 16, h: 14, trait: 'web' },
   planta:  { n: 'Planta Carnívora', draw: 'planta', pal: { a: '#c8304a', b: '#8a1a2e', c: '#ff6a7a', x: '#ffe0e0' }, hp: 1.2, dmg: 1.3, spd: 14, h: 30, burrow: true },
   bruxa:   { n: 'Bruxa', draw: 'bruxa', pal: { a: '#4a2a6a', b: '#2a1e3a' }, hp: 0.9, dmg: 1.2, spd: 12, h: 37, trait: 'ranged', proj: 'pocao' },
-  hidra:   { n: 'Hidra', draw: 'hidra', pal: { a: '#3a8a6a', b: '#1e5a44', c: '#8ad0a0', e: '#ffe04a' }, hp: 1.3, dmg: 1.2, spd: 8, h: 38, trait: 'regen' },
-  serpente: { n: 'Serpente Gigante', draw: 'serpenteG', big: true, front: 24, pal: { a: '#5a8a3a', b: '#3a6a24', c: '#a0d070', e: '#ffe04a', x: '#e0c040', dirt: '#4a4a2a' }, hp: 1.2, dmg: 1.2, spd: 10, h: 100, burrow: true, variant: { n: 'Serpente Albina', pal: { a: '#e8e0d0', c: '#ffffff', x: '#e04060', e: '#ff3040', dirt: '#4a4a2a' } } },
+  hidra:   { n: 'Hidra', draw: 'hidra', pal: { a: '#3a8a6a', b: '#1e5a44', c: '#8ad0a0', e: '#ffe04a' }, hp: 1.3, dmg: 1.2, spd: 8, h: 38, trait: 'regen', img: 'hidra', imgK: 1, imgBot: 60, big: true, front: 41, h: 58 },
+  serpente: { n: 'Serpente Gigante', draw: 'serpenteG', big: true, front: 24, pal: { a: '#5a8a3a', b: '#3a6a24', c: '#a0d070', e: '#ffe04a', x: '#e0c040', dirt: '#4a4a2a' }, hp: 1.2, dmg: 1.2, spd: 10, h: 100, burrow: true, variant: { imgFilter: 'grayscale(1) brightness(1.6) contrast(.9)', n: 'Serpente Albina', pal: { a: '#e8e0d0', c: '#ffffff', x: '#e04060', e: '#ff3040', dirt: '#4a4a2a' } }, img: 'serpente', imgK: 2, imgBot: 64, big: true, front: 80, h: 124 },
   // Castelo Sombrio
   lobisomem: { n: 'Lobisomem', draw: 'lobisomem', pal: { a: '#6a5a4a', b: '#4a3e32', c: '#9a8a78', e: '#ffd04a', x: '#3a4a6a' }, hp: 1.2, dmg: 1.2, spd: 20, h: 38, trait: 'fast' },
   vampiro: { n: 'Vampiro', draw: 'vampiro', pal: { a: '#e8dce8', b: '#1a1022', x: '#a8203a', e: '#ff2a3a' }, hp: 1, dmg: 1.1, spd: 14, h: 30, trait: 'drain' },
   zumbi:   { n: 'Zumbi', draw: 'zumbi', pal: { a: '#7fb069', b: '#5e8a4c', shirt: '#3d6ea8', pants: '#4a3b2a', hair: '#3a4a2a', e: '#ff3a3a' }, hp: 1.25, dmg: 1.1, spd: 9, h: 28 },
   fantasma: { n: 'Fantasma', draw: 'espirito', pal: { a: '#e8e4f4', b: '#a8a0c8', e: '#2a1e3a' }, hp: 0.8, dmg: 1, spd: 18, h: 36, fly: true },
   morcegoV: { n: 'Morcego Vampiro', draw: 'morcego', pal: { a: '#5a1a2a', b: '#3a0e1a', c: '#8a2a3a', e: '#ffe04a' }, hp: 0.9, dmg: 1, spd: 22, h: 36, fly: true, trait: 'drain' },
-  lobisomemAlfa: { n: 'Lobisomem Alfa', draw: 'lobisomem', pal: { a: '#3a3440', b: '#24202a', c: '#6a6078', e: '#ff3030', x: '#5a2030' }, hp: 1.3, dmg: 1.3, spd: 18, h: 38, trait: 'fast' },
-  conde:   { n: 'Conde Vampiro', draw: 'condeG', big: true, front: 22, pal: { a: '#f0e4f0', b: '#140a1a', x: '#c8203a', e: '#ff2a3a', count: true }, hp: 1.2, dmg: 1.1, spd: 10, h: 68, trait: 'drain', variant: { n: 'Conde de Sangue', pal: { a: '#f0e4f0', b: '#5a0a14', x: '#1a0a1a', e: '#ffe04a', count: true } } },
+  lobisomemAlfa: { n: 'Lobisomem Alfa', draw: 'lobisomem', pal: { a: '#3a3440', b: '#24202a', c: '#6a6078', e: '#ff3030', x: '#5a2030' }, hp: 1.3, dmg: 1.3, spd: 18, h: 38, trait: 'fast', img: 'lobisomemAlfa', imgK: 1, imgBot: 62, big: true, front: 38, h: 62 },
+  conde:   { n: 'Conde Vampiro', draw: 'condeG', big: true, front: 22, pal: { a: '#f0e4f0', b: '#140a1a', x: '#c8203a', e: '#ff2a3a', count: true }, hp: 1.2, dmg: 1.1, spd: 10, h: 68, trait: 'drain', variant: { imgFilter: 'sepia(.6) hue-rotate(-35deg) saturate(3) brightness(.85)', n: 'Conde de Sangue', pal: { a: '#f0e4f0', b: '#5a0a14', x: '#1a0a1a', e: '#ffe04a', count: true } }, img: 'conde', imgK: 2, imgBot: 62, big: true, front: 49, h: 122 },
   // Inferno
   diabrete: { n: 'Diabrete', draw: 'diabrete', pal: { a: '#d0402e', b: '#8a1e14', c: '#f07a5a' }, hp: 0.8, dmg: 1.1, spd: 22, h: 40, fly: true },
   caoInfernal: { n: 'Cão Infernal', draw: 'lobo', pal: { a: '#3a1a14', b: '#22100c', c: '#7a2a1a', e: '#ffb020', fire: true }, hp: 1.1, dmg: 1.3, spd: 26, h: 19, trait: 'fire' },
   demonio: { n: 'Demônio', draw: 'demonio', pal: { a: '#a82a2a', b: '#5a1414', c: '#d05040' }, hp: 1.5, dmg: 1.3, spd: 9, h: 44 },
   esqFogo: { n: 'Esqueleto Flamejante', draw: 'esqueleto', pal: { a: '#3a2a2a', b: '#1e1414', e: '#ffd04a', fire: true, blade: '#ff8a2a' }, hp: 1.1, dmg: 1.3, spd: 13, h: 33, trait: 'fire' },
-  senhorChamas: { n: 'Senhor das Chamas', draw: 'elemental', pal: { a: '#e8601a', b: '#8a1e0a', c: '#ffb030' }, hp: 1.3, dmg: 1.4, spd: 10, h: 44, fly: true, trait: 'fire' },
+  senhorChamas: { n: 'Senhor das Chamas', draw: 'elemental', pal: { a: '#e8601a', b: '#8a1e0a', c: '#ffb030' }, hp: 1.3, dmg: 1.4, spd: 10, h: 44, fly: true, trait: 'fire', img: 'senhorChamas', imgK: 1, imgBot: 61, big: true, front: 36, h: 62 },
+  // Versão 4: Céu, Templo Antigo e Golem de Fogo (desenhos do Jean)
+  passaroT: { n: 'Pássaro da Tempestade', draw: 'abutre', pal: { a: '#3a5a9a', b: '#24386a' }, hp: 0.9, dmg: 1.15, spd: 20, h: 38, fly: true },
+  slimeNuvem: { n: 'Slime de Nuvem', draw: 'slime', pal: SL('#e8f0ff', '#ffffff', '#a8b8d8'), hp: 1, dmg: 1, spd: 14, h: 12 },
+  espiritoVento: { n: 'Espírito do Vento', draw: 'espirito', pal: { a: '#c8f0d8', b: '#7ac0a0', e: '#1a3a2a' }, hp: 0.9, dmg: 1.1, spd: 20, h: 36, fly: true, trait: 'fast' },
+  querubim: { n: 'Querubim Sombrio', draw: 'diabrete', pal: { a: '#e8c060', b: '#9a7a2a', c: '#fff0a0' }, hp: 0.9, dmg: 1.2, spd: 22, h: 40, fly: true },
+  esqTemplo: { n: 'Esqueleto Guardião', draw: 'esqueleto', pal: { a: '#e8c070', b: '#a8802a', e: '#58d4ff' }, hp: 1.2, dmg: 1.2, spd: 12, h: 31 },
+  mumiaAntiga: { n: 'Múmia Antiga', draw: 'mumia', pal: { a: '#b8a888', b: '#7a6a50', c: '#d8c8a8' }, hp: 1.6, dmg: 1.1, spd: 8, h: 28 },
+  escaravelho: { n: 'Escaravelho Gigante', draw: 'centopeia', pal: { a: '#2a6a6a', b: '#1a4a4a', c: '#5aa8a8', e: '#ffe04a', x: '#0a2a2a' }, hp: 1.2, dmg: 1.2, spd: 18, h: 11 },
+  cobraTemplo: { n: 'Cobra do Templo', draw: 'verme', pal: { a: '#6a8a3a', b: '#4a6a2a', c: '#c8b050', dirt: '#6a7a5a' }, hp: 1.3, dmg: 1.3, spd: 16, h: 30, burrow: true },
+  harpia: { n: 'Harpia Rainha', draw: 'golem', pal: { a: '#888888', dirt: '#6a5a4a' }, hp: 1.2, dmg: 1.2, spd: 16, fly: true, img: 'harpia', imgK: 1, imgBot: 59, big: true, front: 40, h: 55 },
+  grifo: { n: 'Grifo', draw: 'golem', pal: { a: '#888888', dirt: '#6a5a4a' }, hp: 1.3, dmg: 1.2, spd: 12, variant: { imgFilter: 'grayscale(1) brightness(.45) contrast(1.4)', n: 'Grifo da Tempestade', pal: {} }, img: 'grifo', imgK: 2, imgBot: 62, big: true, front: 65, h: 124 },
+  guardiao: { n: 'Guardião de Pedra', draw: 'golem', pal: { a: '#888888', dirt: '#6a5a4a' }, hp: 1.6, dmg: 1.1, spd: 8, img: 'guardiao', imgK: 1, imgBot: 58, big: true, front: 35, h: 58 },
+  golemCorrompido: { n: 'Golem Corrompido', draw: 'golem', pal: { a: '#888888', dirt: '#6a5a4a' }, hp: 1.5, dmg: 1.3, spd: 7, variant: { imgFilter: 'hue-rotate(250deg) saturate(1.5)', n: 'Golem do Abismo', pal: {} }, img: 'golemCorrompido', imgK: 2, imgBot: 60, big: true, front: 78, h: 112 },
+  golemFogo: { n: 'Golem de Fogo', draw: 'golem', pal: { a: '#888888', dirt: '#6a5a4a' }, hp: 1.4, dmg: 1.4, spd: 9, trait: 'fire', img: 'golemFogo', imgK: 1, imgBot: 58, big: true, front: 40, h: 57, anim: { idle: [0, 1, 2, 3, 4, 3, 2, 1], attack: [5, 6, 7, 8] } },
   // Eventos
-  abobora: { n: 'Abóbora Assombrada', draw: 'abobora', pal: { a: '#e87a1a', b: '#a84a0a', c: '#ffb04a' }, hp: 1, dmg: 1, spd: 18, h: 20, event: 'halloween' },
-  bonecoNeve: { n: 'Boneco de Neve Gigante', draw: 'bonecoNeve', pal: {}, hp: 1.3, dmg: 1.2, spd: 9, h: 50, event: 'natal' },
-  dragao:  { n: 'Dragão Ancestral', draw: 'dragaoG', big: true, front: 50, pal: { a: '#a8282a', b: '#5a1018', c: '#f0a050', e: '#ffe04a', x: '#2a0a0a' }, hp: 1.3, dmg: 1.3, spd: 10, h: 112, fly: true, trait: 'fire', variant: { n: 'Dragão Negro', pal: { a: '#2e2a34', m: '#6a1420', bone: '#d8c8b0', c: '#8a2a2a', e: '#ff3020', x: '#c02020' } } }
+  abobora: { n: 'Abóbora Assombrada', draw: 'abobora', pal: { a: '#e87a1a', b: '#a84a0a', c: '#ffb04a' }, hp: 1, dmg: 1, spd: 18, h: 20, event: 'halloween', img: 'abobora', imgK: 0.6, imgBot: 54, big: true, front: 21, h: 30, anim: { idle: [0, 1, 2, 3, 2, 1], attack: [4, 5, 6, 7] } },
+  bonecoNeve: { n: 'Boneco de Neve Gigante', draw: 'bonecoNeve', pal: {}, hp: 1.3, dmg: 1.2, spd: 9, h: 50, event: 'natal', img: 'bonecoNeve', imgK: 1, imgBot: 61, big: true, front: 38, h: 62, anim: { idle: [0, 1, 2, 3, 4, 3, 2, 1] } },
+  dragao:  { n: 'Dragão Ancestral', draw: 'dragaoG', big: true, front: 50, pal: { a: '#a8282a', b: '#5a1018', c: '#f0a050', e: '#ffe04a', x: '#2a0a0a' }, hp: 1.3, dmg: 1.3, spd: 10, h: 112, fly: true, trait: 'fire', variant: { imgFilter: 'saturate(.35) brightness(.72) contrast(1.35)', n: 'Dragão Negro', pal: { a: '#2e2a34', m: '#6a1420', bone: '#d8c8b0', c: '#8a2a2a', e: '#ff3020', x: '#c02020' } }, img: 'dragao', imgK: 2, imgBot: 60, big: true, front: 71, h: 116 }
 };
 
-// Biomas: 10 fases cada. mini = fase 5, boss = fase 10. Depois da fase 70 vem o Modo Pesadelo.
+// Biomas: 10 fases cada. mini = fase 5, boss = fase 10. Depois da fase 90 vem o Modo Pesadelo.
 export const BIOMES = [
   { id: 'floresta', n: 'Floresta', mons: ['slime', 'lobo', 'goblin', 'aranha', 'coelho'], mini: 'chefeGoblin', boss: 'slimeRei', mech: 'split' },
   { id: 'deserto', n: 'Deserto', mons: ['escorpiao', 'mumia', 'abutre', 'centDeserto', 'verme'], mini: 'escRei', boss: 'farao', mech: 'summon', summon: 'mumia' },
@@ -198,7 +224,9 @@ export const BIOMES = [
   { id: 'caverna', n: 'Caverna', mons: ['esqueleto', 'arqueiro', 'aranhaG', 'centPedra', 'goblinM', 'morcego'], mini: 'rainhaAranha', boss: 'reiOssos', mech: 'summon', summon: 'esqueleto' },
   { id: 'pantano', n: 'Pântano', mons: ['zumbiP', 'sapo', 'planta', 'bruxa'], mini: 'hidra', boss: 'serpente', mech: 'dig' },
   { id: 'castelo', n: 'Castelo Sombrio', mons: ['lobisomem', 'vampiro', 'zumbi', 'fantasma', 'morcegoV'], mini: 'lobisomemAlfa', boss: 'conde', mech: 'summon', summon: 'morcegoV' },
-  { id: 'inferno', n: 'Inferno', mons: ['diabrete', 'caoInfernal', 'demonio', 'esqFogo'], mini: 'senhorChamas', boss: 'dragao', mech: 'dragon' }
+  { id: 'inferno', n: 'Inferno', mons: ['diabrete', 'caoInfernal', 'demonio', 'esqFogo'], mini: 'senhorChamas', mini2: 'golemFogo', boss: 'dragao', mech: 'dragon' },
+  { id: 'ceu', n: 'Céu', mons: ['passaroT', 'slimeNuvem', 'espiritoVento', 'querubim'], mini: 'harpia', boss: 'grifo', mech: 'summon', summon: 'passaroT' },
+  { id: 'templo', n: 'Templo Antigo', mons: ['esqTemplo', 'mumiaAntiga', 'escaravelho', 'cobraTemplo'], mini: 'guardiao', boss: 'golemCorrompido', mech: 'quake' }
 ];
 
 // Conquistas. reward: { title } e/ou { relic }
@@ -222,7 +250,7 @@ export const ACHIEVEMENTS = [
   { id: 'boss6', n: 'Amanhecer',           d: 'Derrote o Conde Vampiro',                title: 'Caçador da Noite', boss: 'Conde Vampiro' , gear: 'capaConde' },
   { id: 'boss7', n: 'Matador de Dragões',  d: 'Derrote o Dragão Ancestral',             title: 'Matador de Dragões', boss: 'Dragão Ancestral' , gear: 'escamas' },
   { id: 'st20',  n: 'Desbravador',         d: 'Chegue à fase 20',                       title: 'Desbravador', relic: 'desbravador' },
-  { id: 'st71',  n: 'Pesadelo',            d: 'Chegue ao Modo Pesadelo (fase 71)',      title: 'Lenda Viva' },
+  { id: 'st71',  n: 'Pesadelo',            d: 'Chegue ao Modo Pesadelo (fase 91)',      title: 'Lenda Viva' },
   { id: 'lv5',   n: 'Aventureiro',         d: 'Alcance o nível 5' },
   { id: 'lv10',  n: 'Herói',               d: 'Alcance o nível 10',                     title: 'Herói' },
   { id: 'forja', n: 'Na Bigorna',          d: 'Forje um equipamento' },

@@ -1,3 +1,16 @@
+Versão 4: chefões novos, história e muito mais
+
+- Os chefões e mini-chefões agora são os desenhos do Jean, animados (Golem de Fogo, Abóbora e Boneco de Neve com animação quadro a quadro)
+- Dois lugares novos antes do Pesadelo: Céu (Harpia Rainha e Grifo) e Templo Antigo (Guardião de Pedra e Golem Corrompido)
+- Herói ou heroína, 6 penteados e 3 classes: Guerreiro (espada), Mago (magia de longe) e Arqueiro (flechas)
+- Música 8-bit para cada lugar, chefões, vila e descanso, e sons de golpe, crítico, baú e nível (liga e desliga em Ajustes)
+- Calendário de 7 dias, desafio do dia e combo de missões no horário (até +50% de XP)
+- Cartas de monstro (completar um lugar dá +3% de ataque) e gemas na arma: rubi (fogo), safira (gelo), esmeralda (veneno)
+- Resumo do mês com o seu horário forte e a categoria que mais cresceu
+- História em capítulos: prólogo e um capítulo por chefão derrotado, para rever no Livro de Histórias
+- Renascer no nível 30: +10% de ataque e vida para sempre, aura e título
+- Sua casa na vila com troféus dos chefões, Masmorra da Semana aos domingos e Chefão do Mês que leva golpes das suas missões
+
 Versão 3.3: Ferreiro consertado
 
 - O Ferreiro e a Loja não travam mais (o desenho da roupa de viajante quebrava a tela)

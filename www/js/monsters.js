@@ -1,6 +1,69 @@
 // Desenho dos monstros (origem nos pés, olhando para a esquerda, onde está o herói).
 // Cada função recebe o monstro m (com m.def.pal = paleta), o tempo t e a paleta p.
-import { R, shade } from './sprites.js';
+import { R, shade, getCtx } from './sprites.js';
+
+// ---------- Monstros desenhados pelo Jean (PNG 64×64) ----------
+// O desenho inteiro é animado: respira, balança andando, avança no golpe, pisca vermelho no aviso
+// do golpe forte e branco ao apanhar. Alguns têm quadros de animação feitos no PixelLab.
+const IMG = {};
+function loadImg(name) {
+  if (IMG[name]) return IMG[name];
+  const e = IMG[name] = { img: new Image(), ok: false, tint: {} };
+  e.img.onload = () => { e.ok = true; };
+  e.img.src = 'assets/monsters/' + name + '.png';
+  return e;
+}
+export function preloadSprites(defs) { for (const d of Object.values(defs)) { if (d.img) loadImg(d.img); if (d.anim) loadImg('anim/' + d.img); } }
+// cópia pintada (branco/vermelho) ou com filtro de cor (chefões do Pesadelo), guardada pronta
+function variantOf(e, key, make) {
+  if (e.tint[key]) return e.tint[key];
+  const c = document.createElement('canvas'); c.width = e.img.width; c.height = e.img.height;
+  const x = c.getContext('2d'); make(x, c); return (e.tint[key] = c);
+}
+const filtered = (e, f) => f ? variantOf(e, 'f:' + f, x => { x.filter = f; x.drawImage(e.img, 0, 0); }) : e.img;
+const tinted = (e, f, col) => variantOf(e, 't:' + f + col, x => { x.drawImage(filtered(e, f), 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = col; x.fillRect(0, 0, 999, 999); });
+
+function drawSprite(m, t, d) {
+  const anim = d.anim && loadImg('anim/' + d.img);
+  const e = loadImg(d.img);
+  if (!e.ok) return false;
+  const ctx = getCtx(), k = d.imgK || 1, bot = d.imgBot || 64;
+  const seed = m.seed || 0, lunge = m.lunge >= 0 ? Math.sin(m.lunge * Math.PI) : 0;
+  // fonte: quadro da animação (se houver) ou o desenho parado
+  let src = e, sx = 0;
+  if (anim && anim.ok) {
+    const A = d.anim, atk = (m.lunge >= 0 || m.wind > 0) && A.attack;
+    let fr;
+    if (atk) { const p = m.lunge >= 0 ? m.lunge : 0; fr = A.attack[Math.min(A.attack.length - 1, Math.floor(p * A.attack.length))]; }
+    else fr = A.idle[Math.floor(t * 6 + seed) % A.idle.length];
+    src = anim; sx = fr * 64;
+  }
+  const f = d.imgFilter || null;
+  let img = src === e ? filtered(e, f) : src.img;
+  if (m.flash > 0) img = tinted(src, src === e ? f : null, '#ffffff');
+  else if (m.wind > 0 && Math.floor(t * 14) % 2) img = tinted(src, src === e ? f : null, 'rgba(255,70,50,.7)');
+  // movimento do desenho inteiro
+  const walking = m.state === 'walk' && !m.retreat;
+  const breath = Math.sin(t * 3 + seed) * 0.035;
+  const sway = walking ? Math.sin(t * 7 + seed) * 1.6 : Math.sin(t * 2.2 + seed) * 0.8;
+  const bob = walking ? Math.abs(Math.sin(t * 7 + seed)) * 2 : (d.fly ? Math.sin(t * 3 + seed) * 2 + 2 : 0);
+  const push = -lunge * (d.anim && d.anim.attack ? 6 : 12) / k;
+  const e2 = Math.min(1, m.emerge ?? 1), rows = Math.max(1, Math.round(bot * e2));
+  if (m.under) {                                  // escondido debaixo da terra: só o monte de terra
+    const dirt = (d.pal && d.pal.dirt) || '#4a4a2a', j = Math.floor(t * 10) % 2;
+    R(-18 * k / 2, -3 - j, 36 * k / 2, 3 + j, dirt); R(-10, -5 - j, 20, 2, shade(dirt, 0.2));
+    return true;
+  }
+  ctx.imageSmoothingEnabled = false;
+  for (let y = bot - rows; y < bot; y++) {
+    const q = (bot - y) / bot;                    // 0 nos pés, 1 no topo
+    const off = sway * q * q + push * (0.4 + q * 0.6);
+    const dy = -(bot - y) * k * (1 + breath) - bob - (bot - rows) * 0;
+    ctx.drawImage(img, sx, y, 64, 1, Math.round(-32 * k + off * k), Math.round(dy), 64 * k, Math.ceil(k * (1 + breath)));
+  }
+  return true;
+}
+
 
 const walkStep = (m, t, sp = 6) => (m.state === 'walk' ? Math.floor(t * sp + m.seed) % 2 : 0);
 const lungeK = m => (m.lunge >= 0 ? Math.sin(m.lunge * Math.PI) : 0);
@@ -336,6 +399,7 @@ const DRAW = { slime, coelho, lobo, goblin, aranha, escorpiao, zumbi, morcego, m
 
 export function drawMonster(m, t) {
   const d = m.def || {};
+  if (d.img && drawSprite(m, t, d)) return;
   (DRAW[d.draw] || slime)(m, t, d.pal || {});
 }
 

@@ -111,7 +111,7 @@ export function playIntro() {
     const cv = document.createElement('canvas'); cv.width = 240; cv.height = 240;
     const t = document.createElement('b'); t.textContent = 'ROTINA RPG';
     ov.append(cv, t); document.body.appendChild(ov);
-    const look = heroLookFor(iconTier());
+    const look = heroLookFor(null);
     const seq = [0, 0, 1, 1, 2, 3, 3, 0];
     let i = 0;
     const step = () => {

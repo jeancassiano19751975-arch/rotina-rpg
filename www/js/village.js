@@ -6,7 +6,9 @@ import {
   potionPrice, buyCape, buyPotion, usePotion, buffOn, slotIcon
 } from './gear.js';
 import { fmt } from './rules.js';
-import { drawVillage, renderItem, renderMonThumb, clearVillageCache } from './game.js';
+import { GEMS, socketOf, setSocket, biomeCards, setDone } from './daily.js';
+import { CHAPTERS, unlocked, playChapter } from './story.js';
+import { drawVillage, renderItem, renderMonThumb, clearVillageCache, drawHouse } from './game.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -19,7 +21,7 @@ const mercOpen = () => S.level >= MERC_LVL;
 const libOpen = () => (S.miniKills || 0) >= 1;
 const PLACES = [
   { id: 'loja', n: 'Loja' }, { id: 'ferreiro', n: 'Ferreiro' },
-  { id: 'mercador', n: 'Mercador' }, { id: 'biblioteca', n: 'Biblioteca' }
+  { id: 'mercador', n: 'Mercador' }, { id: 'biblioteca', n: 'Biblioteca' }, { id: 'casa', n: 'Sua casa' }
 ];
 
 // ---------- cena animada ----------
@@ -60,7 +62,7 @@ function paintIcons(root) {
   });
   root.querySelectorAll('[data-mon]').forEach(cv => {
     const [key, kind, v] = cv.dataset.mon.split('|'), def = MONSTERS[key];
-    try { renderMonThumb(cv, key, { kind, unknown: cv.dataset.unk === '1', pal: v && def.variant ? def.variant.pal : null }); }
+    try { renderMonThumb(cv, key, { kind, unknown: cv.dataset.unk === '1', pal: v && def.variant ? def.variant.pal : null, filter: v && def.variant ? def.variant.imgFilter : null }); }
     catch (e) { console.warn('bestiário', key, e); }
   });
 }
@@ -109,6 +111,15 @@ function forgeHTML() {
     else { const c = forgeCost(id); act = '<button class="btn sm' + (S.gold >= c ? ' gold-btn' : '') + '" type="button" data-forge="' + id + '">Forjar +' + (f + 1) + ' · ' + fmt(c) + '</button>'; }
     h += '<div class="eq v-item">' + ic(id) + '<div><b>' + esc(it.n) + (f ? ' +' + f : '') + '</b><small>' + s.one + ' · ' + statLine(id) + '</small></div>' + act + '</div>';
   }
+  h += '</div>';
+  // gemas: encaixe na arma que está usando
+  const wid = equippedId('w'), on = wid && socketOf(wid); S.gems = S.gems || {};
+  h += '<span class="h3">Gemas</span><p class="hint">Encaixe uma gema na arma: ela muda de cor e os golpes ganham um efeito. Gemas vêm do calendário de 7 dias, do desafio do dia e dos chefões. Trocar devolve a gema antiga para a bolsa.</p><div class="v-list">';
+  for (const [k, G] of Object.entries(GEMS)) {
+    const n = S.gems[k] || 0, here = on === k;
+    const act = here ? '<button class="btn sm" type="button" data-gem="">Tirar</button>' : '<button class="btn sm' + (n ? ' gold-btn' : '') + '" type="button" data-gem="' + k + '"' + (n && wid ? '' : ' disabled') + '>Encaixar</button>';
+    h += '<div class="eq v-item' + (here ? ' v-on' : '') + '"><span class="v-ic gem" style="--g:' + G.c + ';--gl:' + G.l + '"></span><div><b>' + G.n + '</b> <span class="chip">' + n + ' na bolsa</span>' + (here ? ' <span class="chip ok">na arma</span>' : '') + '<small>' + G.d + '</small></div>' + act + '</div>';
+  }
   return h + '</div>';
 }
 
@@ -143,26 +154,49 @@ function libHTML() {
     const def = MONSTERS[key]; if (!def) return '';
     const bk = v ? key + '_v' : key, n = B[bk] || 0, name = v ? def.variant.n : def.n;
     seenAll.add(bk);
-    return '<div class="bst' + (n ? '' : ' unk') + '"><canvas width="72" height="60" data-mon="' + key + '|' + kind + (v ? '|v' : '') + '" data-unk="' + (n ? 0 : 1) + '"></canvas>' +
+    const cards = (S.cards && S.cards[bk]) || 0;
+    return '<div class="bst' + (n ? '' : ' unk') + (cards ? ' card' : '') + '">' + (cards ? '<em class="cardb">🃏' + (cards > 1 ? '×' + cards : '') + '</em>' : '') + '<canvas width="72" height="60" data-mon="' + key + '|' + kind + (v ? '|v' : '') + '" data-unk="' + (n ? 0 : 1) + '"></canvas>' +
       '<b>' + (n ? esc(name) : '???') + '</b><small>' + (n ? fmt(n) + ' derrotad' + (n === 1 ? 'o' : 'os') : v ? 'Chefão do Pesadelo' : kind === 'boss' ? 'Chefão' : kind === 'mini' ? 'Mini-chefão' : 'Não visto') + '</small></div>';
   };
   let h = '', total = 0, seen = 0;
   const count = (key, v) => { total++; if (B[v ? key + '_v' : key]) seen++; };
   let body = '';
   BIOMES.forEach(b => {
-    const list = [...b.mons.map(k => [k, 'normal']), [b.mini, 'mini'], [b.boss, 'boss']];
+    const list = [...b.mons.map(k => [k, 'normal']), [b.mini, 'mini'], ...(b.mini2 ? [[b.mini2, 'mini']] : []), [b.boss, 'boss']];
     list.forEach(([k]) => count(k));
     if (MONSTERS[b.boss] && MONSTERS[b.boss].variant) count(b.boss, true);
-    body += '<span class="h3">' + b.n + '</span><div class="bst-grid">' + list.map(([k, kind]) => card(k, kind)).join('') +
+    const cs = biomeCards(b), have = cs.filter(k => S.cards && S.cards[k]).length;
+    body += '<span class="h3">' + b.n + ' <small class="muted">· cartas ' + have + '/' + cs.length + (setDone(b) ? ' ✔ +3% de ataque' : '') + '</small></span><div class="bst-grid">' + list.map(([k, kind]) => card(k, kind)).join('') +
       (MONSTERS[b.boss] && MONSTERS[b.boss].variant ? card(b.boss, 'boss', true) : '') + '</div>';
   });
   const extra = Object.keys(MONSTERS).filter(k => !seenAll.has(k) && (B[k] || MONSTERS[k].event));
   if (extra.length) { extra.forEach(k => count(k)); body += '<span class="h3">Raros e de eventos</span><div class="bst-grid">' + extra.map(k => card(k, 'normal')).join('') + '</div>'; }
-  h += '<p class="hint">Bestiário: ' + seen + ' de ' + total + ' monstros descobertos. Os chefões de outra cor aparecem no Modo Pesadelo (depois da fase 70).' +
+  h += '<span class="h3">📖 Livro de Histórias</span><p class="hint">Cada chefão derrotado pela primeira vez libera um capítulo. Toque para assistir de novo.</p><div class="v-list">' +
+    CHAPTERS.map(c => unlocked(c.id) ? '<button type="button" class="eq v-item chap" data-chap="' + c.id + '"><span class="v-ic chap-ic">▶</span><div><b>' + esc(c.n) + '</b><small>Assistir</small></div><span></span></button>'
+      : '<div class="eq v-item v-lock"><span class="v-ic chap-ic">🔒</span><div><b>???</b><small>' + (c.id === 'renascer' ? 'Renasça uma vez' : c.id === 'pesadelo' ? 'Chegue ao Modo Pesadelo' : c.id === 'final' ? 'Derrote o Golem do Abismo (Pesadelo)' : 'Derrote o próximo chefão') + '</small></div><span></span></div>').join('') + '</div>';
+  h += '<p class="hint">🃏 Cartas: cada monstro pode soltar a sua carta (chefões soltam mais). Completou as cartas de um lugar, o herói ganha +3% de ataque para sempre.</p>';
+  h += '<p class="hint">Bestiário: ' + seen + ' de ' + total + ' monstros descobertos. Os chefões de outra cor aparecem no Modo Pesadelo (depois da fase ' + (BIOMES.length * 10) + ').' +
     ' Elites derrotados: ' + fmt(S.eliteKills || 0) + '.</p>' + body;
   return h;
 }
 
+// ---------- Casa do herói ----------
+const BOSS_KEYS = { 'Slime Colossal': 'slimeRei', 'Faraó Esquecido': 'farao', 'Rainha do Gelo': 'rainhaGelo', 'Rei dos Ossos': 'reiOssos', 'Serpente Gigante': 'serpente', 'Conde Vampiro': 'conde', 'Dragão Ancestral': 'dragao', 'Grifo': 'grifo', 'Golem Corrompido': 'golemCorrompido' };
+const trophies = () => Object.entries(BOSS_KEYS).filter(([n]) => S.bosses && S.bosses[n]).map(([, k]) => k);
+function houseHTML() {
+  const tr = trophies();
+  let h = '<p class="hint">A sua casa mostra a sua jornada: cada chefão derrotado vira um troféu na parede, o pet dorme na caminha, a estante guarda as histórias e o quadro conta as conquistas. Quem renasce ganha uma estátua.</p>';
+  h += '<div class="scene-wrap box"><canvas id="house-cv" width="640" height="300" aria-label="Casa do herói"></canvas></div>';
+  h += '<span class="lbl">Cor da parede</span><div class="seg-wrap">' + ['Roxa', 'Verde', 'Madeira', 'Azul'].map((n, i) => '<button type="button" class="btn sm' + ((S.houseWall || 0) === i ? ' gold-btn' : '') + '" data-wall="' + i + '">' + n + '</button>').join('') + '</div>';
+  h += '<p class="hint">Troféus: ' + tr.length + ' de ' + Object.keys(BOSS_KEYS).length + ' chefões.</p>';
+  return h;
+}
+let houseRaf = 0;
+function houseLoop(now) {
+  const cv = $('house-cv'); if (!cv || $('p-vila').hidden || document.hidden || V.sel !== 'casa') { houseRaf = 0; return; }
+  try { drawHouse(cv, now / 1000, trophies()); } catch (e) { console.warn('casa', e); }
+  houseRaf = setTimeout(() => requestAnimationFrame(houseLoop), 120);
+}
 // ---------- aba ----------
 export function renderVila() {
   const p = $('p-vila');
@@ -172,10 +206,12 @@ export function renderVila() {
     const lock = (pl.id === 'mercador' && !mercOpen()) || (pl.id === 'biblioteca' && !libOpen());
     return '<button type="button" class="btn sm' + (V.sel === pl.id ? ' gold-btn' : '') + '" data-place="' + pl.id + '">' + (lock ? '🔒 ' : '') + pl.n + '</button>';
   }).join('') + '</div>';
-  h += '<div id="v-body">' + (V.sel === 'loja' ? shopHTML() : V.sel === 'ferreiro' ? forgeHTML() : V.sel === 'mercador' ? mercHTML() : libHTML()) + '</div>';
+  h += '<div id="v-body">' + (V.sel === 'loja' ? shopHTML() : V.sel === 'ferreiro' ? forgeHTML() : V.sel === 'mercador' ? mercHTML() : V.sel === 'casa' ? houseHTML() : libHTML()) + '</div>';
   p.innerHTML = h;
   paintIcons(p);
   startLoop();
+  if (V.sel === 'casa') { clearTimeout(houseRaf); houseRaf = 0; requestAnimationFrame(houseLoop); }
+  p.querySelectorAll('[data-wall]').forEach(b => b.onclick = () => { S.houseWall = Number(b.dataset.wall); save(); renderVila(); });
 
   const cv = $('vila-cv');
   cv.onclick = e => {
@@ -191,6 +227,11 @@ export function renderVila() {
   p.querySelectorAll('[data-forge]').forEach(b => b.onclick = () => {
     const r = doForge(b.dataset.forge);
     if (r.error) hooks.toast(r.error); else { V.hit = 1.4; hooks.toast('Tum! Tum! Forjado: agora é +' + r.level); hooks.changed(); }
+  });
+  p.querySelectorAll('[data-chap]').forEach(b => b.onclick = () => playChapter(b.dataset.chap));
+  p.querySelectorAll('[data-gem]').forEach(b => b.onclick = () => {
+    const r = setSocket(equippedId('w'), b.dataset.gem || null);
+    if (r.error) hooks.toast(r.error); else { V.hit = 1.2; hooks.toast(b.dataset.gem ? GEMS[b.dataset.gem].n + ' encaixada na arma!' : 'Gema guardada na bolsa'); hooks.changed(); }
   });
   p.querySelectorAll('[data-buyp]').forEach(b => b.onclick = () => { const r = buyPotion(b.dataset.buyp); if (r.error) hooks.toast(r.error); else { hooks.toast(POTIONS[b.dataset.buyp].n + ' na bolsa'); hooks.changed(); } });
   p.querySelectorAll('[data-usep]').forEach(b => b.onclick = () => { const r = usePotion(b.dataset.usep); if (r.error) hooks.toast(r.error); else { hooks.toast(POTIONS[b.dataset.usep].n + ': ativa por 3 minutos'); hooks.changed(); } });

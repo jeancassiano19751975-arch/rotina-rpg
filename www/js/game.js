@@ -1,7 +1,8 @@
 // Motor do jogo: herói, monstros, chefões, baú, fogueira, efeitos e HUD da cena.
 import { S, bus, today } from './state.js';
 import { WEAPONS, ARMOR_SETS, SHIELDS, SKINS, HAIRS, CLOTHES, MONSTERS, BIOMES, PETS } from './data.js';
-import { drawMonster } from './monsters.js';
+import { drawMonster, preloadSprites } from './monsters.js';
+preloadSprites(MONSTERS);
 import { drawPet } from './pets.js';
 import {
   heroStats, isHard, furyOn, tiredOn, restedOn, isRest, biomeFor, slotKind, mStats,
@@ -12,6 +13,10 @@ import {
 } from './sprites.js';
 import { look as gearLook, buffOn } from './gear.js';
 import { focusLeft } from './week.js';
+import { SFX, wantTrack } from './audio.js';
+import { GEMS, socketOf, rollCard, checkSets, giveGem, auraColor } from './daily.js';
+import { unlock as unlockStory } from './story.js';
+import { equippedId } from './gear.js';
 import { eventNow, dayPhase, isBirthday, EVENT_NAMES } from './events.js';
 
 const HX = 96, TAU = Math.PI * 2;
@@ -36,8 +41,12 @@ export const heroFx = { x: HX, y: GY };
 export function fullHeal() { hero.hp = heroStats().maxHp; }
 
 const isResting = () => isRest(today());
-const heroLook = () => ({
-  ...gearLook(),
+const gemmed = L => {
+  const g = socketOf(equippedId('w')); if (!g) return L;
+  return { ...L, weapon: { ...L.weapon, edge: GEMS[g].l, glow: true, glowC: GEMS[g].c, blade: L.weapon.blade } };
+};
+const heroLook = () => gemmed({
+  ...gearLook(), sex: S.hero.sex || 'm', style: S.hero.style || 0, cls: S.hero.cls || 'guerreiro',
   skin: SKINS[S.hero.skin] || SKINS[0], hair: HAIRS[S.hero.hair] || HAIRS[0], cloth: CLOTHES[S.hero.cloth] || CLOTHES[0]
 });
 
@@ -126,6 +135,7 @@ function makeMon(key, kind, opts = {}) {
     under: !!def.burrow, emerge: def.burrow ? 0 : 1, trait: def.trait, shots: def.trait === 'ranged' ? 2 : 0, shootT: 0.4
   };
   if (def.tiers) { m.def = { ...def, pal: def.tiers[tier] }; m.name = def.tierNames[tier]; }
+  if (def.img) m.s = 1;                         // desenho do Jean: o tamanho já vem no próprio desenho
   Object.assign(m, opts);
   return m;
 }
@@ -160,14 +170,14 @@ function spawn() {
     if (b.nightmare && m.def.variant) {
       const v = m.def.variant;
       m.baseName = m.name; m.name = v.n; m.bkey = b.boss + '_v';
-      m.def = { ...m.def, pal: { ...m.def.pal, ...v.pal } };
+      m.def = { ...m.def, pal: { ...m.def.pal, ...v.pal }, imgFilter: v.imgFilter };
     }
     if (m.def.big) m.s = 1;
     if (b.mech === 'summon') m.thresholds = [0.66, 0.33];
     if (b.mech === 'dig') m.digT = 3.5;
-    mons.push(m); banner('CHEFÃO: ' + m.name.toUpperCase(), '#ff6a5a');
+    mons.push(m); banner('CHEFÃO: ' + m.name.toUpperCase(), '#ff6a5a'); SFX.boss();
   } else if (kind === 'mini') {
-    const m = makeMon(ev === 'natal' ? 'bonecoNeve' : b.mini, 'mini');
+    const m = makeMon(ev === 'natal' ? 'bonecoNeve' : b.mini2 && Math.random() < 0.5 ? b.mini2 : b.mini, 'mini');
     mons.push(m); banner('MINI-CHEFÃO: ' + m.name.toUpperCase(), '#ffb04a');
   } else {
     let key, bonus = 1;
@@ -188,7 +198,16 @@ const monTop = m => m.h * m.s;
 const monColor = m => (m.def.pal && m.def.pal.a) || '#ffffff';
 
 function killMon(m) {
-  onKill(m);
+  onKill(m); SFX.kill();
+  if (!m.child) {
+    const card = rollCard(m);
+    if (card) {
+      float(m.x, GY - monTop(m) - 18, card.first ? 'CARTA NOVA!' : 'CARTA!', '#ffe08a', card.first);
+      if (card.first) bus.emit('card', card);
+      const sets = checkSets(); if (sets.length) bus.emit('card-set', sets);
+    }
+  }
+  if (m.kind === 'boss' && !m.child && Math.random() < 0.5) { const g = giveGem(); float(m.x, GY - monTop(m) - 30, GEMS[g].n.toUpperCase() + '!', GEMS[g].l, true); bus.emit('gem', g); }
   shatter(m);
   burst(m.x, GY - monTop(m) / 2, monColor(m), m.kind === 'boss' ? 40 : 18);
   burst(m.x, GY - monTop(m) / 2, '#f2c14e', 6);
@@ -220,6 +239,8 @@ function killMon(m) {
   bus.emit('kill', m);
 }
 function finishBoss(m) {
+  const sk = m.bkey === 'golemCorrompido_v' ? 'final' : m.bkey ? null : m.key;
+  if (sk && unlockStory(sk)) bus.emit('story', sk);
   banner(m.name.toUpperCase() + ' DERROTADO!', '#f2c14e');
   hero.victory = 1.8; hero.atk = null; projs = [];
   burst(HX + 30, GY - 30, '#ffe08a', 30);
@@ -249,7 +270,7 @@ function heroDie() {
   }
   burst(HX, GY - 14, '#e85d4f', 24);
   onHeroDeath();
-  mons = []; queue = []; projs = []; bossPending = null; spawnT = 1.4;
+  mons = []; queue = []; projs = []; shots = []; bossPending = null; spawnT = 1.4;
   hero.slow = hero.frozen = hero.burn = 0;
   fullHeal(); hero.hurt = 1.2;
   bus.emit('hero-death');
@@ -267,7 +288,7 @@ function hitHero(m, heavy, Hs) {
     float(HX - 2, GY - 44, 'BLOQUEIO!', '#a6f2ff');
     if (d) { hero.hp -= d; float(HX - 4, GY - 34, '-' + d, '#ff6a5a'); }
   } else {
-    hero.hp -= d; hero.hurt = 0.45; hero.recoil = 0.2;
+    hero.hp -= d; hero.hurt = 0.45; hero.recoil = 0.2; SFX.hurt();
     float(HX - 4, GY - 34, '-' + d, '#ff6a5a', heavy);
   }
   if (d > 0) {
@@ -276,6 +297,7 @@ function hitHero(m, heavy, Hs) {
     const P = Hs.powers || {};
     if (t === 'web' && !P.noSlow && Math.random() < 0.35) { hero.slow = 2.5; float(HX, GY - 52, 'TEIA!', '#e8e8e8'); }
     if (!P.noFreeze && ((t === 'freeze' && Math.random() < 0.3) || bossFreeze)) { hero.frozen = bossFreeze ? 1.6 : 1.1; float(HX, GY - 52, 'CONGELADO!', '#8ad0f0'); burst(HX, GY - 14, '#bfe8ff', 12); }
+    if (m.mech === 'quake' && heavy) { hero.frozen = 1.2; shake = 9; float(HX, GY - 52, 'TERREMOTO!', '#c8a070'); burst(HX + 10, GY - 2, '#8a7a5a', 18); }
     if (t === 'fire' && !P.noBurn && (heavy || Math.random() < 0.3)) { hero.burn = 3; float(HX, GY - 52, 'QUEIMANDO!', '#ff8a2a'); }
   }
   if (heavy || m.kind === 'boss') shake = heavy ? 6 : 3;
@@ -290,6 +312,8 @@ function update(dt) {
   const resting = isResting();
   const b = biomeFor(S.stage);
   const bKey = b.id + b.cycle;
+  const vila = document.getElementById('p-vila');
+  wantTrack(resting ? 'descanso' : vila && !vila.hidden ? 'vila' : mons.some(x => x.kind === 'boss') ? 'chefao' : b.id);
   if (bKey !== lastBiome) { if (lastBiome) banner((b.nightmare ? 'PESADELO: ' : '') + b.n.toUpperCase(), b.nightmare ? '#ff6a8a' : '#a6f2a0'); lastBiome = bKey; }
 
   parts.forEach(p => { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g ?? 140) * dt; if (p.y > GY) { p.y = GY; p.vy *= -0.3; p.vx *= 0.6; } });
@@ -340,6 +364,12 @@ function update(dt) {
   }
   projs = projs.filter(p => !p.dead && p.x > -10);
 
+  for (const m of [...mons]) {                 // efeitos das gemas: fogo, gelo e veneno
+    if (m.burnT > 0) { m.burnT -= dt; m.hp -= m.dot * dt; if (Math.random() < dt * 14) parts.push({ x: m.x + (Math.random() - .5) * 14, y: GY - monTop(m) * Math.random(), vx: 0, vy: -30, g: 0, life: .4, c: Math.random() < .5 ? '#ff8a2a' : '#ffe04a', sz: 1 }); }
+    if (m.poisonT > 0) { m.poisonT -= dt; m.hp -= m.dot * 0.7 * dt; if (Math.random() < dt * 10) parts.push({ x: m.x + (Math.random() - .5) * 14, y: GY - monTop(m) * Math.random(), vx: 0, vy: -15, g: 0, life: .5, c: '#5ae07a', sz: 1 }); }
+    if (m.iceT > 0) { m.iceT -= dt; m.atkT += dt * 0.85; }
+    if (m.hp <= 0 && mons.includes(m)) killMon(m);
+  }
   for (const m of mons) {
     m.flash = Math.max(0, m.flash - dt); m.kx = Math.max(0, m.kx - 35 * dt);
     if (m.trait === 'regen' && m.hp < m.max && m.hp > 0) m.hp = Math.min(m.max, m.hp + m.max * 0.012 * dt);
@@ -401,7 +431,7 @@ function update(dt) {
           m.attacks++;
           m.atkT = m.trait === 'fast' ? 1.0 : m.enraged ? 1.05 : m.kind === 'normal' ? 1.5 : 1.7; if (m.atkMul) m.atkT *= m.atkMul;
           const every = m.enraged ? 2 : 3;
-          if (m.kind !== 'normal' && m.attacks % every === 0) m.wind = 0.75;
+          if (m.kind !== 'normal' && m.attacks % every === 0) { m.wind = 0.75; SFX.warn(); }
           else { m.lunge = 0; m.hitDone = false; m.heavy = false; }
         }
       }
@@ -419,6 +449,14 @@ function update(dt) {
   hero.hurt = Math.max(0, hero.hurt - dt); hero.block = Math.max(0, hero.block - dt); hero.recoil = Math.max(0, hero.recoil - dt);
   updatePet(dt, Hs, fighting, f);
   updateHeroAnim(dt, Hs, fighting, f);
+  for (const sh of shots) {                     // magia e flecha voando até o monstro
+    const t = sh.t, tx = t && mons.includes(t) ? t.x - 6 : sh.x + 999;
+    sh.x += 280 * dt; sh.life = (sh.life || 0) + dt;
+    if (sh.kind === 'cast' && Math.random() < 0.6) parts.push({ x: sh.x - 2, y: sh.y + (Math.random() - .5) * 4, vx: -20, vy: 0, g: 0, life: .25, c: sh.e, sz: 1 });
+    if (sh.x >= tx) { sh.done = true; if (mons.includes(t)) { heroHit(t, sh.a); burst(t.x - 4, sh.y, sh.kind === 'cast' ? sh.c : '#e8e0d0', sh.a.crit ? 12 : 6); } }
+    if (sh.life > 1.5) sh.done = true;
+  }
+  shots = shots.filter(x => !x.done);
 
   if (furyOn() && Math.random() < dt * 14) parts.push({ x: HX - 5 + Math.random() * 10, y: GY - 4 - Math.random() * 24, vx: 0, vy: -25, life: .5, c: '#ff6a5a', sz: 1 });
   if (tiredOn() && Math.random() < dt * 1.5) parts.push({ x: HX + 5, y: GY - 28, vx: 6, vy: 0, life: .7, c: '#7ab8ff', sz: 1 });
@@ -427,10 +465,15 @@ function update(dt) {
 const ATK = {
   down: { d: 0.22, h: 0.5, mult: 1, kx: 4 }, up: { d: 0.22, h: 0.5, mult: 1, kx: 4 },
   thrust: { d: 0.24, h: 0.45, mult: 1.15, kx: 7 }, spin: { d: 0.44, h: 0.62, mult: 1.6, kx: 9 },
-  leap: { d: 0.54, h: 0.8, mult: 2.2, kx: 11 }, bash: { d: 0.3, h: 0.5, mult: 0.6, kx: 13 }
+  leap: { d: 0.54, h: 0.8, mult: 2.2, kx: 11 }, bash: { d: 0.3, h: 0.5, mult: 0.6, kx: 13 },
+  cast: { d: 0.34, h: 0.55, mult: 1, kx: 5 }, shoot: { d: 0.3, h: 0.5, mult: 1, kx: 5 }
 };
+// Mago e arqueiro atacam de longe: a magia ou a flecha voa até o monstro.
+let shots = [];
+const heroCls = () => (S.hero && S.hero.cls) || 'guerreiro';
 function startAttack(Hs) {
-  const crit = Math.random() < Hs.crit, hasShield = !!heroLook().shield;
+  const crit = Math.random() < Hs.crit, hasShield = !!heroLook().shield, cls = heroCls();
+  if (cls !== 'guerreiro') { hero.combo++; hero.atk = { type: cls === 'mago' ? 'cast' : 'shoot', t: 0, crit, hit: false, critMul: crit ? 2.2 : 1 }; return; }
   const type = crit ? 'leap' : hasShield && Math.random() < 0.14 ? 'bash' : hero.combo % 6 === 5 ? 'spin' : ['down', 'up', 'thrust'][hero.combo % 3];
   hero.combo++;
   hero.atk = { type, t: 0, crit, hit: false };
@@ -439,9 +482,16 @@ function heroHit(m, a) {
   if (!m || m.retreat) return;
   if (m.under) { float(m.x, GY - 20, 'ESQUIVOU', '#c0c0c0'); return; }
   const Hs = heroStats(), A = ATK[a.type], crit = a.crit;
-  const dmg = Math.max(1, Math.round(Hs.atk * A.mult * (0.9 + Math.random() * 0.2) * (1 - (m.armor || 0) * (crit ? 0.3 : 1))));
+  const dmg = Math.max(1, Math.round(Hs.atk * A.mult * (a.critMul || 1) * (0.9 + Math.random() * 0.2) * (1 - (m.armor || 0) * (crit ? 0.3 : 1))));
   m.hp -= dmg;
-  if (Hs.powers && Hs.powers.leech) hero.hp = Math.min(Hs.maxHp, hero.hp + dmg * Hs.powers.leech); m.flash = 0.1; m.kx = A.kx;
+  if (Hs.powers && Hs.powers.leech) hero.hp = Math.min(Hs.maxHp, hero.hp + dmg * Hs.powers.leech); m.flash = 0.1; m.kx = A.kx; (crit ? SFX.crit : SFX.hit)();
+  const gem = socketOf(equippedId('w'));
+  if (gem && m.hp > 0 && Math.random() < (crit ? 0.6 : 0.22)) {
+    m.dot = Math.max(m.dot || 0, Hs.atk * 0.35);
+    if (gem === 'rubi') { m.burnT = 3; float(m.x, GY - monTop(m) - 16, 'QUEIMANDO', GEMS.rubi.l); }
+    if (gem === 'esmeralda') { m.poisonT = 5; float(m.x, GY - monTop(m) - 16, 'ENVENENADO', GEMS.esmeralda.l); }
+    if (gem === 'safira') { m.iceT = 1.4; float(m.x, GY - monTop(m) - 16, 'CONGELADO', GEMS.safira.l); burst(m.x, GY - monTop(m) / 2, '#bfe8ff', 10); }
+  }
   if (petActive('leech')) hero.hp = Math.min(Hs.maxHp, hero.hp + dmg * 0.05 * petStage().k);
   float(m.x + 2, GY - monTop(m) - 4, crit ? dmg + '!' : String(dmg), crit ? '#ffd04a' : a.type === 'spin' ? '#a6f2ff' : '#ffffff', crit || a.type === 'spin');
   burst(m.x - 4, GY - monTop(m) / 2, heroLook().weapon.edge, crit ? 10 : a.type === 'spin' ? 8 : 4);
@@ -513,8 +563,15 @@ function updateHeroAnim(dt, Hs, fighting, f) {
       hero.dy = -16 * Math.sin(q * Math.PI); hero.dx = sp * 8;
       hero.ang = p < 0.5 ? -1.4 : -1.4 + Math.min(1, (p - 0.5) / 0.3) * 4.0;
     } else if (a.type === 'bash') { hero.ang = 2.3; hero.shieldFwd = p > 0.12 && p < 0.88; hero.dx = sp * 6; }
-    if (!a.hit && p >= A.h) { a.hit = true; heroHit(front(), a); }
-    if (p >= 1) { hero.atk = null; hero.shieldFwd = false; }
+    else if (a.type === 'cast') { hero.ang = p < 0.5 ? 1.9 - e * 2.6 : -0.7 + (p - 0.5) * 4.4; hero.dy = -sp * 2; }
+    else if (a.type === 'shoot') { hero.ang = 1.57; hero.draw = p < A.h; hero.dx = p > A.h ? -sp * 2 : 0; }
+    if (!a.hit && p >= A.h) {
+      a.hit = true;
+      if (a.type === 'cast' || a.type === 'shoot') {
+        const t = front(); if (t) (a.type === 'cast' ? SFX.magic : SFX.arrow)(); if (t) shots.push({ x: HX + 14, y: GY - (a.type === 'cast' ? 34 : 20), t, a, kind: a.type, c: heroLook().weapon.blade, e: heroLook().weapon.edge });
+      } else heroHit(front(), a);
+    }
+    if (p >= 1) { hero.atk = null; hero.shieldFwd = false; hero.draw = false; }
   } else {
     const idle = 1.9 + (!fighting ? Math.sin(time * 8) * 0.08 : 0);
     hero.ang += (idle - hero.ang) * k; hero.ext *= 1 - k; hero.dx *= 1 - k; hero.dy *= 1 - k;
@@ -575,7 +632,7 @@ function draw() {
     const hx = hero.dx + rec;
     groundShadow(HX + hx, Math.max(6, 14 + hero.dy * 0.5));
     const a = hero.atk;
-    if (a && a.type !== 'thrust' && a.type !== 'bash') {   // rastro do golpe
+    if (a && a.type !== 'thrust' && a.type !== 'bash' && a.type !== 'cast' && a.type !== 'shoot') {   // rastro do golpe
       const A = ATK[a.type], p = Math.min(1, a.t / A.d);
       const a0 = a.type === 'up' ? 2.6 : a.type === 'leap' ? -1.4 : -1.0;
       if (p > 0.08 && !(a.type === 'leap' && p < 0.5)) {
@@ -586,11 +643,16 @@ function draw() {
       }
     }
     pix(() => drawHero({ ...look, x: 0, y: 0, dx: hx, dy: hero.dy, walk: walking, step: Math.floor(time * 9) % 2,
-      ang: hero.ang, ext: hero.ext, shieldFwd: hero.shieldFwd || hero.block > 0, time }));
+      ang: hero.ang, ext: hero.ext, shieldFwd: hero.shieldFwd || hero.block > 0, draw: hero.draw, time }));
+    const au = auraColor(); if (au) blitAura(HX, GY, 1, au, 0.55 + 0.3 * Math.sin(time * 4));
     blit(HX, GY, 1, hero.hurt > 0 && Math.floor(time * 20) % 2 ? 0.35 : 1);
     if (hero.frozen > 0) { ctx.fillStyle = 'rgba(160,220,255,.38)'; ctx.fillRect(HX - 9 + hx, GY - 34 + hero.dy, 20, 34); R(HX - 6 + hx, GY - 30, 1, 1, '#ffffff'); R(HX + 5 + hx, GY - 14, 1, 1, '#ffffff'); }
     if (hero.slow > 0) { ctx.globalAlpha = 0.7; R(HX - 8, GY - 22, 16, 1, '#e8e8e8'); R(HX - 6, GY - 12, 13, 1, '#e8e8e8'); R(HX - 3, GY - 26, 1, 16, '#e8e8e8'); R(HX + 4, GY - 20, 1, 12, '#d0d0d0'); ctx.globalAlpha = 1; }
     for (const m of mons.slice().sort((a, b) => b.x - a.x)) drawMon(m);
+    shots.forEach(sh => {
+      if (sh.kind === 'cast') { const r = sh.a.crit ? 3 : 2; ctx.globalAlpha = 0.45; R(sh.x - r - 1, sh.y - r - 1, r * 2 + 3, r * 2 + 3, sh.c); ctx.globalAlpha = 1; R(sh.x - r, sh.y - r, r * 2 + 1, r * 2 + 1, sh.c); R(sh.x - 1, sh.y - 1, 2, 2, '#ffffff'); }
+      else { R(sh.x - 10, sh.y, 11, 1, '#8a6a4a'); R(sh.x, sh.y - 1, 3, 3, '#c8d0d8'); R(sh.x - 11, sh.y - 1, 2, 3, '#e8e0d0'); if (sh.a.crit) R(sh.x - 6, sh.y - 1, 6, 1, '#ffe04a'); }
+    });
     projs.forEach(p => {
       if (p.kind === 'lanca') { R(p.x, p.y, 13, 1, '#8a5a2a'); R(p.x - 2, p.y - 1, 3, 3, '#c8d0d8'); }
       else if (p.kind === 'flecha') { R(p.x, p.y, 10, 1, '#8a6a4a'); R(p.x - 2, p.y - 1, 2, 3, '#c8d0d8'); R(p.x + 9, p.y - 1, 2, 3, '#e8e0d0'); }
@@ -705,10 +767,12 @@ export const shakeScreen = n => { shake = Math.max(shake, n); };
 
 // Prévia do herói (tela de criação)
 export function drawPreview(canvas, cfg) {
-  const c = canvas.getContext('2d'); c.setTransform(4, 0, 0, 4, 0, 0); c.imageSmoothingEnabled = false;
+  const k = canvas.width / 40, c = canvas.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); c.imageSmoothingEnabled = false;
   c.clearRect(0, 0, canvas.width, canvas.height);
+  if (cfg === S.hero) { pix(() => drawHero({ ...heroLook(), x: 0, y: 0, walk: false, step: 0, ang: 1.9, time: 0.4 })); blit(20, 40, 1, 1, c); return; }
   pix(() => drawHero({ weapon: WEAPONS[0], shield: null, helm: ARMOR_SETS[0], helmTier: 0, chest: ARMOR_SETS[0], legs: ARMOR_SETS[0],
-    skin: SKINS[cfg.skin], hair: HAIRS[cfg.hair], cloth: CLOTHES[cfg.cloth], x: 0, y: 0, walk: false, step: 0, ang: 1.9, time: 0 }));
+    skin: SKINS[cfg.skin], hair: HAIRS[cfg.hair], cloth: CLOTHES[cfg.cloth], sex: cfg.sex || 'm', style: cfg.style || 0, cls: cfg.cls || 'guerreiro',
+    x: 0, y: 0, walk: false, step: 0, ang: 1.9, time: 0 }));
   blit(20, 40, 1, 1, c);
 }
 
@@ -752,7 +816,7 @@ export function renderMonThumb(canvas, key, opts = {}) {
   const c = canvas.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, canvas.width, canvas.height); c.imageSmoothingEnabled = false;
   const prev = ctx; ctx = c;
   const m = makeMon(key, opts.kind || 'normal'); m.state = 'fight'; m.under = false; m.emerge = 1; m.s = 1;
-  if (opts.pal) m.def = { ...m.def, pal: { ...m.def.pal, ...opts.pal } };
+  if (opts.pal) m.def = { ...m.def, pal: { ...m.def.pal, ...opts.pal }, imgFilter: opts.filter || m.def.imgFilter };
   pix(() => drawMonster(m, 1.3));
   if (bbox) {
     const k = Math.min(3, (canvas.width - 8) / bbox.w, (canvas.height - 8) / bbox.h);
@@ -808,6 +872,13 @@ function bBiblioteca(t, open) {
   R(-7, -40, 14, 14, '#2a2a40'); R(-6, -39, 12, 12, '#f2d070'); R(-1, -39, 2, 12, '#2a2a40'); R(-6, -34, 12, 2, '#2a2a40');
   R(-6, -18, 12, 18, '#3a2a5a'); R(-5, -17, 10, 17, '#5a3a8a');
   ['#d83a3a', '#3a8ad8', '#6cc04a', '#f2c14e'].forEach((c, i) => R(-14 + i * 3, -6, 2, 6, c));
+}
+function bCasaHeroi() {                      // a casa do herói: telhado azul, bandeira e porta grande
+  R(-18, -26, 36, 26, '#d8b888'); for (let i = 0; i < 5; i++) R(-18, -22 + i * 5, 36, 1, '#b8986a');
+  for (let i = 0; i < 6; i++) R(-22 + i * 2, -30 - i * 3, 44 - i * 4, 4, i % 2 ? '#2a5aa8' : '#3a6ac8');
+  R(-1, -52, 2, 10, '#5a3a20'); R(1, -52, 8, 5, '#e84a4a'); R(1, -52, 8, 1, '#ff8a8a');
+  R(-5, -16, 10, 16, '#5a3a20'); R(-4, -15, 8, 15, '#8a5a2a'); R(2, -8, 1, 2, '#f2c14e');
+  R(-15, -20, 7, 7, '#3a2a1e'); R(-14, -19, 5, 5, '#ffd870'); R(8, -20, 7, 7, '#3a2a1e'); R(9, -19, 5, 5, '#ffd870');
 }
 function bCasa(k) {
   const cols = ['#c8a070', '#b8906a', '#d0b080'];
@@ -873,10 +944,11 @@ export function drawVillage(canvas, opts) {
   c.setTransform(2, 0, 0, 2, 0, 0);
   const spots = opts.spots = [];
   const B = [
-    { id: 'loja', x: 44, k: 'loja', fn: () => bLoja(0), label: 'LOJA', open: true },
-    { id: 'ferreiro', x: 124, k: 'ferreiro', fn: () => bFerreiro(0), label: 'FERREIRO', open: true },
-    { id: 'mercador', x: 204, k: 'merc' + !!opts.merc, fn: () => bMercador(0, opts.merc), label: opts.merc ? 'MERCADOR' : 'NÍVEL 3', open: opts.merc },
-    { id: 'biblioteca', x: 278, k: 'lib' + !!opts.lib, fn: () => bBiblioteca(0, opts.lib), label: opts.lib ? 'BIBLIOTECA' : '1º MINI-CHEFÃO', open: opts.lib }
+    { id: 'loja', x: 34, k: 'loja', fn: () => bLoja(0), label: 'LOJA', open: true },
+    { id: 'ferreiro', x: 100, k: 'ferreiro', fn: () => bFerreiro(0), label: 'FERREIRO', open: true },
+    { id: 'mercador', x: 166, k: 'merc' + !!opts.merc, fn: () => bMercador(0, opts.merc), label: opts.merc ? 'MERCADOR' : 'NÍVEL 3', open: opts.merc },
+    { id: 'biblioteca', x: 228, k: 'lib' + !!opts.lib, fn: () => bBiblioteca(0, opts.lib), label: opts.lib ? 'BIBLIOTECA' : 'MINI-CHEFÃO', open: opts.lib },
+    { id: 'casa', x: 288, k: 'casaH', fn: () => bCasaHeroi(), label: 'SUA CASA', open: true }
   ];
   for (const b of B) {
     const e = cached(b.k, b.fn); put(e, b.x, GY);
@@ -887,15 +959,15 @@ export function drawVillage(canvas, opts) {
   }
   // fogo da fornalha (por cima do desenho guardado)
   const f = Math.floor(t * 8) % 3;
-  R(124 - 16, GY - 12 - f, 10, 8 + f, '#e8502a'); R(124 - 14, GY - 14 - f, 6, 6, '#ffb040'); R(124 - 12, GY - 10, 2, 3, '#fff0a0');
+  R(100 - 16, GY - 12 - f, 10, 8 + f, '#e8502a'); R(100 - 14, GY - 14 - f, 6, 6, '#ffb040'); R(100 - 12, GY - 10, 2, 3, '#fff0a0');
   // fumaça da chaminé
-  for (let i = 0; i < 4; i++) { const q = (t * 0.5 + i / 4) % 1; c.globalAlpha = 0.5 * (1 - q); R(138 + Math.sin(q * 6 + i) * 3, GY - 54 - q * 30, 3, 3, '#9aa0b8'); }
+  for (let i = 0; i < 4; i++) { const q = (t * 0.5 + i / 4) % 1; c.globalAlpha = 0.5 * (1 - q); R(114 + Math.sin(q * 6 + i) * 3, GY - 54 - q * 30, 3, 3, '#9aa0b8'); }
   c.globalAlpha = 1;
   // ferreiro na bigorna
-  R(150, GY - 6, 10, 3, '#3a3a46'); R(152, GY - 3, 6, 3, '#2a2a34'); R(149, GY - 8, 12, 2, '#5a5a66');
+  R(126, GY - 6, 10, 3, '#3a3a46'); R(128, GY - 3, 6, 3, '#2a2a34'); R(125, GY - 8, 12, 2, '#5a5a66');
   const hit = opts.hit || 0, up = hit > 0 ? Math.sin(hit * 20) > 0 : Math.floor(t * 2) % 2 === 0;
-  put(cached('smith' + up, () => smith(0, up ? 0 : 1)), 144, GY);
-  if (hit > 0) for (let i = 0; i < 5; i++) R(156 + Math.round(rnd(Math.floor(t * 30) + i) * 10 - 5), GY - 10 - Math.round(rnd(Math.floor(t * 30) + i + 9) * 8), 1, 1, i % 2 ? '#ffe04a' : '#ff8a2a');
+  put(cached('smith' + up, () => smith(0, up ? 0 : 1)), 120, GY);
+  if (hit > 0) for (let i = 0; i < 5; i++) R(132 + Math.round(rnd(Math.floor(t * 30) + i) * 10 - 5), GY - 10 - Math.round(rnd(Math.floor(t * 30) + i + 9) * 8), 1, 1, i % 2 ? '#ffe04a' : '#ff8a2a');
   // herói (e pet) em frente ao prédio escolhido
   const tgt = (B.find(b => b.id === opts.sel) || B[0]).x - 16;
   opts.hx = opts.hx == null ? tgt : opts.hx + Math.sign(tgt - opts.hx) * Math.min(Math.abs(tgt - opts.hx), 2.5);
@@ -916,7 +988,7 @@ export function heroLookFor(tier) {
   const t = Math.max(0, Math.min(5, tier));
   return { weapon: WEAPONS[t], shield: t ? SHIELDS[Math.min(4, t - 1)] : null, helm: ARMOR_SETS[t], helmTier: t,
     chest: ARMOR_SETS[t], legs: ARMOR_SETS[t], cape: t >= 4 ? { a: '#b82c26', b: '#8a1e1a', c: '#e04a40' } : null,
-    skin: SKINS[1], hair: HAIRS[2], cloth: CLOTHES[2] };
+    skin: SKINS[1], hair: HAIRS[2], cloth: CLOTHES[2], sex: (S.hero && S.hero.sex) || 'm', style: (S.hero && S.hero.style) || 0, cls: (S.hero && S.hero.cls) || 'guerreiro' };
 }
 export function drawHeroFrame(canvas, frame = 0, opts = {}) {
   const c = canvas.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
@@ -926,5 +998,114 @@ export function drawHeroFrame(canvas, frame = 0, opts = {}) {
   pix(() => drawHero({ ...L, x: 0, y: 0, dx: 0, dy: P.dy || 0, walk: false, step: 0, ang: P.ang, ext: P.ext, time: opts.time || 0.4 }));
   const s = opts.scale || 4;
   blit(opts.x ?? canvas.width / 2, opts.y ?? canvas.height - 4 * s, s, 1, c);
+  ctx = prev; if (ctx) setCtx(ctx);
+}
+
+// ---------- Cenas da história ----------
+let storyParts = [];
+function mestre(t, talk) {
+  const b = talk ? Math.round(Math.abs(Math.sin(t * 8))) : 0;
+  R(-6, -2, 13, 2, '#2a1a4a');
+  R(-6, -20, 12, 18, '#5a3a9a'); R(-5, -20, 3, 18, '#7a5aba'); R(3, -20, 3, 18, '#3a2470');      // manto
+  R(-7, -4, 14, 3, '#4a2a8a'); R(-1, -14, 2, 10, '#f2c14e');
+  R(-4, -28 - b, 9, 8, '#f0c8a0'); R(1, -26 - b, 2, 1, '#1a1a2a'); R(-3, -24 - b, 8, 1, '#d8a888');   // rosto
+  R(-4, -23 - b, 9, 7, '#ececf4'); R(-3, -16 - b, 7, 3, '#ececf4'); R(-1, -13 - b, 3, 2, '#d8d8e4');    // barba
+  R(-6, -30 - b, 13, 3, '#5a3a9a'); R(-4, -34 - b, 9, 4, '#5a3a9a'); R(-2, -38 - b, 6, 4, '#5a3a9a'); R(1, -41 - b, 3, 3, '#5a3a9a'); R(3, -42 - b, 2, 1, '#f2c14e');
+  R(-5, -30 - b, 11, 1, '#f2c14e');
+  R(8, -36, 2, 36, '#7a5230'); R(6, -40, 6, 5, '#58d4ff'); R(7, -39, 2, 2, '#ffffff');               // cajado
+}
+function sombra(t) {
+  const f = Math.sin(t * 2) * 2;
+  for (let y = 0; y < 44; y++) { const w = 6 + Math.round(Math.sin(y / 44 * Math.PI) * 9) + (y > 30 ? (y - 30) : 0); R(-w, -y - 4 + f, w * 2, 1, y > 34 ? '#2a1040' : '#1a0a2a'); }
+  R(-8, -46 + f, 16, 6, '#1a0a2a'); R(-5, -40 + f, 3, 2, '#ff40ff'); R(2, -40 + f, 3, 2, '#ff40ff');
+}
+export function drawStoryFrame(canvas, sc, t) {
+  const c = canvas.getContext('2d'); c.setTransform(2, 0, 0, 2, 0, 0); c.imageSmoothingEnabled = false;
+  const prev = ctx; ctx = c; setCtx(c);
+  const L = scenery(sc.bg || 'floresta'), off = t * 6;
+  c.drawImage(L.sky, 0, 0, W, H);
+  const lay = (img, k) => { const x = -Math.floor(((off * k) % W + W) % W); c.drawImage(img, x, 0, W, H); c.drawImage(img, x + W, 0, W, H); };
+  lay(L.far, 0.15); lay(L.mid, 0.4); c.drawImage(L.ground, 0, 0, W, H);
+  const hx = Math.min(78, -20 + t * 70), walking = hx < 78;
+  // herói
+  groundShadow(hx, 14);
+  pix(() => drawHero({ ...heroLook(), x: 0, y: 0, walk: walking, step: Math.floor(t * 9) % 2, ang: sc.speaker === 'heroi' ? 1.2 + Math.sin(t * 6) * 0.15 : 1.9, ext: 0, time: t }));
+  blit(hx, GY - (sc.speaker === 'heroi' ? Math.round(Math.abs(Math.sin(t * 8))) : 0), 1, 1, c);
+  // Mestre
+  if (sc.bg && (sc.speaker === 'mestre' || !sc.boss)) { groundShadow(132, 14); pix(() => mestre(t, sc.speaker === 'mestre')); blit(132, GY, 1, 1, c); }
+  // chefão (liberto depois da luta: brilha calmo)
+  if (sc.boss && MONSTERS[sc.boss]) {
+    const m = makeMon(sc.boss, 'boss'); m.state = 'fight'; m.under = false; m.emerge = 1; m.s = 1; m.seed = 1;
+    const bx = 240;
+    groundShadow(bx, 40, 0.3);
+    pix(() => drawMonster(m, t)); blit(bx, GY, 1, sc.speaker === 'nevoa' ? 0.5 : 1, c);
+    if (sc.defeated && Math.random() < 0.3) storyParts.push({ x: bx - 30 + Math.random() * 60, y: GY - Math.random() * 90, vx: 0, vy: -20, g: 0, life: .8, c: '#ffe08a', sz: 1 });
+  }
+  // Senhor da Névoa
+  if (sc.nevoa) {
+    c.fillStyle = 'rgba(90,30,120,' + (0.18 + Math.sin(t) * 0.05) + ')'; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 6; i++) { c.globalAlpha = 0.25; R(((i * 70 + t * 12) % (W + 60)) - 30, GY - 10 - (i % 3) * 8, 50, 6, '#9a6ad8'); } c.globalAlpha = 1;
+    if (sc.speaker === 'nevoa') { pix(() => sombra(t)); blit(sc.boss ? 200 : 250, GY - 8, 1.4, 0.9, c); }
+  }
+  // partículas da cena
+  storyParts.forEach(p => { p.life -= 1 / 60; p.y += p.vy / 60; c.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); R(p.x, p.y, 1, 1, p.c); }); c.globalAlpha = 1;
+  storyParts = storyParts.filter(p => p.life > 0);
+  ctx = prev; if (ctx) setCtx(ctx);
+}
+
+// ---------- Masmorra: duelo de uma sala ----------
+export function drawDuel(canvas, key, t, hf, bf, label) {
+  const c = canvas.getContext('2d'); c.setTransform(2, 0, 0, 2, 0, 0); c.imageSmoothingEnabled = false;
+  const prev = ctx; ctx = c; setCtx(c);
+  const L = scenery('caverna');
+  c.drawImage(L.sky, 0, 0, W, H); c.drawImage(L.far, 0, 0, W, H); c.drawImage(L.mid, 0, 0, W, H); c.drawImage(L.ground, 0, 0, W, H);
+  c.fillStyle = 'rgba(40,10,60,.3)'; c.fillRect(0, 0, W, H);
+  const hit = Math.floor(t * 5) % 2;
+  groundShadow(90, 14);
+  pix(() => drawHero({ ...heroLook(), x: 0, y: 0, walk: false, step: 0, ang: hit ? 2.4 : -0.9, ext: hit ? 3 : 0, time: t }));
+  blit(90 + (hit ? 3 : 0), GY, 1, hf <= 0 ? 0.4 : 1, c);
+  if (key) {
+    const m = makeMon(key, 'boss'); m.state = 'fight'; m.under = false; m.emerge = 1; m.s = 1; m.seed = 2; m.flash = bf > 0 && bf < 1 && (t * 5) % 2 < 0.22 ? 0.1 : 0;
+    groundShadow(225, 40, 0.3);
+    pix(() => drawMonster(m, t)); blit(225, GY, 1, bf <= 0 ? 0.25 : 1, c);
+  }
+  R(20, 14, 102, 7, '#0a0e22'); R(21, 15, 100 * Math.max(0, hf), 5, '#e85d4f');
+  R(198, 14, 102, 7, '#0a0e22'); R(199, 15, 100 * Math.max(0, bf), 5, '#ff6a5a');
+  txt(label || '', W / 2, 32, '#ffe08a', 10);
+  ctx = prev; if (ctx) setCtx(ctx);
+}
+
+// ---------- Casa do herói: troféus dos chefões, pet, estátua do renascimento ----------
+const WALLS = [['#5a4a7a', '#4a3a6a'], ['#4a6a5a', '#3a5a4a'], ['#7a5a4a', '#6a4a3a'], ['#3a4a6a', '#2a3a5a']];
+export function drawHouse(canvas, t, trophies) {
+  const c = canvas.getContext('2d'); c.setTransform(2, 0, 0, 2, 0, 0); c.imageSmoothingEnabled = false;
+  const prev = ctx; ctx = c; setCtx(c);
+  const [w1, w2] = WALLS[(S.houseWall || 0) % WALLS.length];
+  R(0, 0, W, H, w1); for (let x = 0; x < W; x += 16) R(x, 0, 1, 104, w2);
+  R(0, 100, W, 4, '#3a2a1e'); R(0, 104, W, H - 104, '#8a5a32'); for (let x = 0; x < W; x += 24) R(x, 104, 1, H - 104, '#6a4424'); R(0, 104, W, 2, '#a87048');
+  // janela com o céu da hora
+  const ph = dayPhase(), sky = ph === 'noite' ? '#14183a' : ph === 'dia' ? '#7ab0f0' : '#f0a070';
+  R(140, 14, 40, 30, '#3a2a1e'); R(142, 16, 36, 26, sky); R(159, 16, 2, 26, '#3a2a1e'); R(142, 28, 36, 2, '#3a2a1e');
+  if (ph === 'noite') { R(148, 20, 3, 3, '#f4f0d8'); R(170, 34, 1, 1, '#ffffff'); }
+  // troféus dos chefões na parede
+  trophies.slice(0, 9).forEach((key, i) => {
+    const x = 18 + (i % 3) * 38 + (i >= 3 ? 0 : 0), y = 14 + Math.floor(i / 3) * 30;
+    R(x - 13, y, 26, 24, '#5a3a20'); R(x - 12, y + 1, 24, 22, '#7a5230'); R(x - 2, y - 2, 4, 2, '#f2c14e');
+    const m = makeMon(key, 'boss'); m.state = 'fight'; m.under = false; m.emerge = 1; m.s = 1; m.seed = 0;
+    pix(() => drawMonster(m, 0)); if (bbox) { const k = Math.min(0.3, 20 / bbox.h, 22 / bbox.w); ctx.drawImage(buf, bbox.x, bbox.y, bbox.w, bbox.h, Math.round(x - bbox.w * k / 2), Math.round(y + 22 - bbox.h * k), bbox.w * k, bbox.h * k); }
+  });
+  if (!trophies.length) txt('Derrote chefões para pendurar troféus aqui', 64 + 28, 40, '#d8d0e8', 6);
+  // estante com cartas e quadro das conquistas
+  R(200, 40, 50, 64, '#5a3a20'); for (let r = 0; r < 3; r++) { R(202, 44 + r * 20, 46, 16, '#3a2a1e'); for (let b = 0; b < 8; b++) R(204 + b * 5, 48 + r * 20, 4, 12, ['#c83a3a', '#3a7ad8', '#4aa84a', '#e8b33c', '#8a5ad0'][(b + r) % 5]); }
+  const ach = Object.keys(S.ach || {}).length;
+  R(262, 18, 44, 30, '#e8c060'); R(264, 20, 40, 26, '#2a2a40'); txt(ach + ' 🏆', 284, 37, '#ffe08a', 9);
+  // cama do pet + pet dormindo
+  R(210, 132, 40, 8, '#8a3a3a'); R(212, 128, 36, 6, '#c85a5a');
+  if (hasPet()) { pix(() => drawPet(S.pet, { t, sleep: true })); blit(230, 132, 1); }
+  // estátua do renascimento
+  if (S.rebirths) { R(276, 96, 24, 8, '#9aa0b0'); R(282, 66, 12, 30, '#b8bcc8'); R(284, 60, 8, 8, '#d8dce8'); txt('×' + S.rebirths, 288, 92, auraColor() || '#ffe08a', 7); }
+  // herói em casa
+  pix(() => drawHero({ ...heroLook(), x: 0, y: 0, walk: false, step: 0, ang: 1.9, ext: 0, time: t })); blit(150, 136, 1, 1, c);
+  const au = auraColor(); if (au) { blitAura(150, 136, 1, au, 0.4); blit(150, 136, 1, 1, c); }
   ctx = prev; if (ctx) setCtx(ctx);
 }

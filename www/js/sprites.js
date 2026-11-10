@@ -6,6 +6,7 @@ let ctx = null;
 let FL = 0; // 0 normal · 1 branco (tomou dano) · 2 vermelho (preparando golpe forte)
 let BUF = false; // desenhando num sprite (contorno e sombra são aplicados depois)
 export const setCtx = c => { ctx = c; };
+export const getCtx = () => ctx;
 export const setFlash = f => { FL = f; };
 export const setBuf = b => { BUF = b; };
 export function R(x, y, w, h, c) {
@@ -74,6 +75,7 @@ export function drawHero(o) {
   const bootM = L.main ? L.main : '#4a3624', bootD = L.main ? L.dark : '#2e2018';
   const skin = o.skin, skinD = shade(skin, -0.2), hair = o.hair, hairD = shade(hair, -0.38), hairL = shade(hair, 0.28);
   const air = (o.dy || 0) < -1;
+  const st = o.style || 0, fem = o.sex === 'f';
   const ls = o.walk && o.step ? 1 : 0, rs = o.walk && !o.step ? 1 : 0;
   const by = y + (o.walk && o.step ? -1 : 0);
 
@@ -103,14 +105,27 @@ export function drawHero(o) {
   if (C.main) {
     R(x - 5, by - 15, 10, 1, tDark); R(x - 1, by - 18, 2, 3, tLight); R(x - 3, by - 14, 1, 2, tLight);
     R(x - 9, by - 21, 5, 4, tMain); R(x - 9, by - 21, 5, 1, tLight); R(x - 9, by - 18, 5, 1, tDark);
-  } else { R(x - 2, by - 19, 4, 1, tDark); R(x + 1, by - 17, 1, 4, tDark); }
+  } else { R(x - 2, by - 19, 4, 1, tDark); R(x + 1, by - 17, 1, 4, tDark); if (fem) { R(x - 5, by - 14, 1, 2, skinD); R(x + 4, by - 14, 1, 2, tDark); } }
   R(x - 5, by - 11, 10, 1, '#3a2a1e'); R(x, by - 11, 2, 1, '#e8c060'); R(x - 5, by - 11, 2, 3, '#6a4a2a');
+  // cabelo comprido atrás da cabeça (rabo de cavalo, longo, trança)
+  if (st === 2) {                          // rabo de cavalo balançando para trás
+    const sw = Math.round(Math.sin((o.time || 0) * 6));
+    R(x - 8, by - 31, 3, 3, hair); R(x - 11, by - 31 + sw, 4, 3, hair); R(x - 13, by - 29 + sw, 3, 5, hair); R(x - 14, by - 25 + sw, 2, 4, hairD);
+    R(x - 12, by - 30 + sw, 2, 1, hairL); R(x - 8, by - 30, 2, 2, '#e8c060');
+  }
+  if (st === 3) { R(x - 9, by - 31, 5, 16, hair); R(x - 10, by - 28, 2, 12, hair); R(x - 9, by - 16, 4, 2, hairD); R(x - 8, by - 30, 1, 13, hairL); R(x - 4, by - 22, 2, 5, hair); }
+  if (st === 5) { for (let i = 0; i < 6; i++) { const bx = x - 11 - (i % 2); R(bx, by - 30 + i * 3, 3, 3, i % 2 ? hairD : hair); R(bx + 1, by - 30 + i * 3, 1, 1, hairL); } R(x - 12, by - 12, 3, 1, '#c83a3a'); R(x - 9, by - 31, 3, 3, hair); }
   // cabeça
   R(x - 5, by - 29, 10, 10, skin); R(x - 4, by - 20, 9, 1, skinD); R(x - 2, by - 25, 2, 3, skinD);
   R(x - 5, by - 31, 10, 3, hair); R(x - 6, by - 30, 3, 8, hair); R(x - 4, by - 31, 6, 1, hairL); R(x - 1, by - 30, 3, 1, hairL);
   R(x - 6, by - 25, 2, 3, hairD); R(x - 6, by - 23, 1, 2, hairD); R(x + 2, by - 28, 3, 1, hair); R(x + 4, by - 27, 1, 1, hair);
   R(x + 1, by - 25, 3, 2, '#ffffff'); R(x + 3, by - 25, 1, 2, '#1a2a4a'); R(x + 1, by - 27, 3, 1, hairD);
-  R(x + 5, by - 24, 1, 2, skinD); R(x + 2, by - 21, 2, 1, '#a8604a');
+  R(x + 5, by - 24, 1, 2, skinD); R(x + 2, by - 21, 2, 1, fem ? '#d0607a' : '#a8604a');
+  if (fem) { R(x + 4, by - 26, 1, 1, '#14141c'); R(x + 1, by - 27, 3, 1, skin); R(x + 2, by - 27, 2, 1, hairD); R(x + 4, by - 22, 1, 1, '#f0a0a0'); }
+  // penteados por cima
+  if (st === 1) { R(x - 4, by - 33, 2, 2, hair); R(x - 1, by - 34, 2, 3, hair); R(x + 2, by - 33, 2, 2, hair); R(x - 1, by - 34, 1, 1, hairL); }
+  if (st === 4) { R(x - 7, by - 34, 5, 4, hair); R(x - 6, by - 35, 3, 1, hair); R(x - 6, by - 34, 2, 1, hairL); R(x - 3, by - 32, 1, 1, '#e8c060'); }
+  if (st === 3 || st === 2 || st === 5) R(x + 3, by - 30, 2, 3, hair);   // franja
   drawHelm(x, by, o.helm, o.helmTier);
   // escudo no braço de trás (ou levantado na frente)
   if (o.shield && !o.shieldFwd) drawShield(x, by, o.shield, false);
@@ -118,10 +133,26 @@ export function drawHero(o) {
   const sx = x + 2, sy = by - 17, Lg = Wp.len;
   ctx.save(); ctx.translate(sx + (o.ext || 0), sy); ctx.rotate(o.ang);
   R(-1, -7, 3, 7, tMain); R(-1, -9, 3, 2, skin);
-  R(-3, -10, 7, 2, Wp.guard); R(-3, -10, 7, 1, shade(Wp.guard, 0.3)); R(0, -8, 1, 1, '#e8c060');
-  R(-1, -10 - Lg, 3, Lg, Wp.blade); R(0, -10 - Lg, 1, Lg, Wp.edge); R(0, -11 - Lg, 1, 1, Wp.edge);
-  R(1, -9 - Lg, 1, Lg - 2, shade(Wp.blade, -0.25));
-  if (Wp.glow || o.goldGlow) { const gc = Wp.glowC || (o.goldGlow ? '#ffe08a' : Wp.edge); R(-2, -9 - Lg, 1, Lg - 2, gc); R(2, -9 - Lg, 1, Lg - 2, gc); }
+  const gc = Wp.glowC || (o.goldGlow ? '#ffe08a' : Wp.edge);
+  if (o.cls === 'mago') {                    // cajado com orbe na ponta (cor da arma)
+    const wood = shade(Wp.guard, -0.1), tip = -14 - Lg;
+    R(0, -8, 2, 12, wood); R(0, tip + 4, 2, -tip - 10, wood); R(1, tip + 4, 1, -tip - 10, shade(wood, 0.3));
+    R(-2, tip + 3, 6, 2, Wp.guard); R(-2, tip - 3, 6, 6, Wp.blade); R(-1, tip - 4, 4, 1, Wp.blade); R(-1, tip + 3, 4, 1, Wp.blade);
+    R(-1, tip - 2, 2, 2, Wp.edge); R(0, tip - 3, 1, 1, '#ffffff');
+    if (Wp.glow || o.goldGlow || Math.floor((o.time || 0) * 4) % 2) { R(-3, tip - 1, 1, 2, gc); R(4, tip - 1, 1, 2, gc); R(0, tip - 5, 2, 1, gc); }
+  } else if (o.cls === 'arqueiro') {         // arco atravessado na mão
+    const bend = o.draw ? 1 : 0;
+    for (let i = -8; i <= 8; i++) { const yy = -10 - Math.round((64 - i * i) / 14) - bend; R(i, yy, 1, 2, Math.abs(i) > 6 ? Wp.edge : Wp.blade); }
+    R(-1, -12, 3, 3, Wp.guard); R(-8, -10, 1, 1, '#e8e0d0'); R(8, -10, 1, 1, '#e8e0d0');
+    R(-7, -10 + bend, 15, 1, '#e8e8f0');
+    if (o.draw) { R(-1, -10, 1, -10, '#8a6a4a'); R(-2, -21, 3, 2, '#c8d0d8'); }
+    if (Wp.glow || o.goldGlow) { R(-8, -14, 1, 2, gc); R(8, -14, 1, 2, gc); }
+  } else {
+    R(-3, -10, 7, 2, Wp.guard); R(-3, -10, 7, 1, shade(Wp.guard, 0.3)); R(0, -8, 1, 1, '#e8c060');
+    R(-1, -10 - Lg, 3, Lg, Wp.blade); R(0, -10 - Lg, 1, Lg, Wp.edge); R(0, -11 - Lg, 1, 1, Wp.edge);
+    R(1, -9 - Lg, 1, Lg - 2, shade(Wp.blade, -0.25));
+    if (Wp.glow || o.goldGlow) { R(-2, -9 - Lg, 1, Lg - 2, gc); R(2, -9 - Lg, 1, Lg - 2, gc); }
+  }
   ctx.restore();
   if (o.shield && o.shieldFwd) drawShield(x, by, o.shield, true);
 }
@@ -289,10 +320,76 @@ function inferno() {
   };
 }
 let CACHE = null;
+// ---- Céu: ilhas flutuantes sobre um mar de nuvens ----
+function cloudRow(g, base, r, col, seed, n) {
+  for (let i = 0; i < n; i++) { const cx = Math.floor(rnd(seed + i) * (W + 40)) - 20, rr = r + Math.floor(rnd(seed + i + 50) * r); disc(g, cx, base, rr, col); }
+  g.fillStyle = col; g.fillRect(0, base, W, H - base);
+}
+function island(g, cx, top, w, grass, rock, dark) {
+  g.fillStyle = grass; g.fillRect(cx - w, top, w * 2, 3);
+  g.fillStyle = '#9ad07a'; g.fillRect(cx - w, top, w * 2, 1);
+  for (let r = 0; r < w; r += 2) { const ww = w - r; g.fillStyle = r % 6 < 3 ? rock : dark; g.fillRect(cx - ww, top + 3 + r / 2, ww * 2, 1); }
+  g.fillStyle = '#6a8a4a'; g.fillRect(cx - 2, top - 7, 1, 7); g.fillStyle = '#4a7a3a'; disc(g, cx - 2, top - 9, 4, '#4a8a3a');
+}
+function sky() {
+  return {
+    sky: layer(g => {
+      bands(g, ['#3a6ad8', '#4a7ae0', '#5a8ae6', '#6a9aec', '#7aaaf0', '#8ab8f2', '#a0c8f4'], 15);
+      disc(g, 250, 30, 10, '#fff8d0'); disc(g, 250, 30, 7, '#ffffff');
+    }),
+    far: layer(g => {
+      cloudRow(g, 92, 8, '#d8e8fa', 10, 9);
+      island(g, 70, 54, 18, '#5aa84a', '#8a7a6a', '#6a5a4a'); island(g, 220, 44, 14, '#5aa84a', '#8a7a6a', '#6a5a4a');
+    }),
+    mid: layer(g => {
+      cloudRow(g, 104, 10, '#eef4ff', 30, 8);
+      for (let i = 0; i < 4; i++) { const x = 30 + i * 80; g.fillStyle = '#e8d8a8'; g.fillRect(x, 74, 4, 30); g.fillStyle = '#c8b888'; g.fillRect(x + 3, 74, 1, 30); g.fillStyle = '#f8ecc8'; g.fillRect(x - 1, 72, 6, 2); }
+    }),
+    ground: layer(g => {
+      g.fillStyle = '#f4f8ff'; g.fillRect(0, GY, W, H - GY);
+      for (let x = 0; x < W; x += 2) for (let y = GY + 3; y < H; y += 2) { const r = rnd(x * 7 + y * 13); if (r > .82) { g.fillStyle = '#d8e4f4'; g.fillRect(x, y, 2, 1); } else if (r < .03) { g.fillStyle = '#ffffff'; g.fillRect(x, y, 2, 2); } }
+      g.fillStyle = '#ffffff'; g.fillRect(0, GY, W, 2); g.fillStyle = '#c8d8ee'; g.fillRect(0, GY + 2, W, 1);
+      for (let x = 0; x < W; x += 6) { const h = 2 + Math.floor(rnd(x + 5) * 3); disc(g, x, GY, h, '#ffffff'); }
+    }),
+    fly: '#ffffff'
+  };
+}
+// ---- Templo Antigo: colunas, musgo e runas brilhando ----
+function temple() {
+  return {
+    sky: layer(g => {
+      bands(g, ['#14261e', '#1a3026', '#203a2c', '#284634', '#30523c', '#3a5e44', '#466a4c'], 15);
+      for (let i = 0; i < 14; i++) { g.fillStyle = 'rgba(160,230,180,.5)'; g.fillRect(Math.floor(rnd(i + 900) * W), 20 + Math.floor(rnd(i + 950) * 60), 1, 1); }
+    }),
+    far: layer(g => {
+      for (let i = 0; i < 6; i++) {          // colunas ao fundo
+        const x = 10 + i * 56; g.fillStyle = '#3e4a40'; g.fillRect(x, 30, 14, 90); g.fillStyle = '#4a584c'; g.fillRect(x + 2, 30, 3, 90);
+        g.fillStyle = '#556455'; g.fillRect(x - 3, 26, 20, 4); g.fillRect(x - 3, 116, 20, 4);
+      }
+      g.fillStyle = '#2e3a30'; g.fillRect(0, 18, W, 8); g.fillStyle = '#3a483c'; g.fillRect(0, 18, W, 2);
+    }),
+    mid: layer(g => {
+      for (let i = 0; i < 4; i++) {          // estátuas e runas
+        const x = 40 + i * 80;
+        g.fillStyle = '#5a6a5c'; g.fillRect(x, 84, 10, 24); g.fillRect(x - 2, 80, 14, 4); g.fillStyle = '#6a7a6c'; g.fillRect(x + 1, 84, 2, 24);
+        g.fillStyle = '#58d4c0'; g.fillRect(x + 4, 92, 2, 2); g.fillRect(x + 3, 96, 4, 1);
+        g.fillStyle = '#3a6a3a'; for (let k = 0; k < 5; k++) g.fillRect(x - 2 + Math.floor(rnd(i * 9 + k) * 14), 80 + k * 5, 2, 3);
+      }
+      for (let x = 0; x < W; x += 3) if (rnd(x + 300) > .6) { g.fillStyle = '#2e5a2e'; g.fillRect(x, 0, 2, 6 + Math.floor(rnd(x) * 18)); }
+    }),
+    ground: layer(g => {
+      g.fillStyle = '#5a6458'; g.fillRect(0, GY, W, H - GY);
+      for (let x = 0; x < W; x += 16) { g.fillStyle = '#4a5448'; g.fillRect(x, GY, 1, H - GY); }
+      for (let y = GY + 8; y < H; y += 8) { g.fillStyle = '#4a5448'; g.fillRect(0, y, W, 1); }
+      g.fillStyle = '#7a8476'; g.fillRect(0, GY, W, 2); g.fillStyle = '#4a8a4a'; for (let x = 0; x < W; x += 4) if (rnd(x + 501) > .55) g.fillRect(x, GY - 1, 3, 2);
+    }),
+    fly: '#8af0d0'
+  };
+}
 export function scenery(id) {
   if (!CACHE) CACHE = {};
   if (!CACHE[id]) {
-    const make = { floresta: forest, deserto: desert, neve: snow, caverna: cave, pantano: swamp, castelo: castle, inferno: inferno }[id] || forest;
+    const make = { floresta: forest, deserto: desert, neve: snow, caverna: cave, pantano: swamp, castelo: castle, inferno: inferno, ceu: sky, templo: temple }[id] || forest;
     CACHE[id] = make();
   }
   return CACHE[id];

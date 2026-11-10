@@ -54,7 +54,7 @@ export function goalProgress(g, ws = S.weekly.wk) {
   return Math.min(v, g.target);
 }
 export const weeklyDone = () => !!S.weekly && S.weekly.goals.every(g => goalProgress(g) >= g.target);
-export const isSunday = () => parseDay(today()).getDay() === 0;
+export const isSunday = () => !!S._sunday || parseDay(today()).getDay() === 0;
 export const chestReady = () => weeklyDone() && !S.weekly.opened && isSunday();
 
 function giveWeeklyChest(late) {

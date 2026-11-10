@@ -6,6 +6,7 @@ import {
 } from './data.js';
 import { itemStats, equippedId, powers, buffOn, checkGear, migrateGear3, bestLevel, item } from './gear.js';
 import { FOCUS_WEIGHT } from './mentor.js';
+import { comboBefore, comboAfter, comboRollover, afterTask, cardBonus, rebirthBonus } from './daily.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const fmt = n => Math.floor(n).toLocaleString('pt-BR');
@@ -54,12 +55,14 @@ export function heroStats() {
   const st = slot => { const id = equippedId(slot); return id ? itemStats(id) : {}; };
   const w = st('w'), sh = st('s'), arm = ['h', 'c', 'l'].map(st);
   const armDef = arm.reduce((x, a) => x + (a.def || 0), 0), armHp = arm.reduce((x, a) => x + (a.hp || 0), 0);
-  const atk = (2 + S.level + (w.atk || 0) + S.attrs.for / 4) * (1 + relicSum('atk') + (P.atkPct || 0)) * (buffOn('forca') ? 1.3 : 1);
-  const def = (armDef + (sh.def || 0) + S.attrs.res / 8) * (1 + (P.statPct || 0)) * (buffOn('ferro') ? 1.3 : 1);
-  const maxHp = (30 + S.level * 8 + armHp + S.attrs.vit * 0.8) * (1 + relicSum('hp') + (P.hpPct || 0) + (P.statPct || 0));
-  const crit = 0.06 + Math.min(0.25, S.attrs.sab / 400) + relicSum('crit') + (P.crit || 0) + (petActive('crit') ? 0.04 * petStage().k : 0);
+  const cls = (S.hero && S.hero.cls) || 'guerreiro';
+  const C = { guerreiro: { hp: 0.10, def: 0.10 }, mago: { atk: 0.15, hp: -0.10 }, arqueiro: { crit: 0.08, spd: 0.10 } }[cls] || {};
+  const atk = (2 + S.level + (w.atk || 0) + S.attrs.for / 4) * (1 + relicSum('atk') + (P.atkPct || 0) + (C.atk || 0) + cardBonus() + rebirthBonus()) * (buffOn('forca') ? 1.3 : 1);
+  const def = (armDef + (sh.def || 0) + S.attrs.res / 8) * (1 + (P.statPct || 0) + (C.def || 0)) * (buffOn('ferro') ? 1.3 : 1);
+  const maxHp = (30 + S.level * 8 + armHp + S.attrs.vit * 0.8) * (1 + relicSum('hp') + (P.hpPct || 0) + (P.statPct || 0) + (C.hp || 0) + rebirthBonus());
+  const crit = 0.06 + Math.min(0.25, S.attrs.sab / 400) + relicSum('crit') + (P.crit || 0) + (C.crit || 0) + (petActive('crit') ? 0.04 * petStage().k : 0);
   const block = (sh.block || 0) + (P.block || 0);
-  let atkInt = Math.max(0.45, 0.85 - S.level * 0.012) * (1 - (P.speed || 0));
+  let atkInt = Math.max(0.45, 0.85 - S.level * 0.012) * (1 - (P.speed || 0) - (C.spd || 0));
   if (tiredOn()) atkInt *= 1.35;
   if (furyOn()) atkInt /= 1.6;
   return { atk: Math.round(atk), def: Math.round(def), maxHp: Math.round(maxHp), crit, block, atkInt, powers: P };
@@ -163,6 +166,7 @@ export function completeTask(id, opts = {}) {
   if (restedOn() && tGame(t.time) < 720) xp *= 1.1;
   if (opts.verified) xp *= 1.5;
   if (isHard(k)) xp *= 0.5;
+  const combo = comboBefore(!!li.late); xp *= combo;
   xp = Math.max(1, Math.round(xp));
 
   lg[id] = { at: Date.now(), xp, late: !!li.late, verified: !!opts.verified, focus: !!opts.focus };
@@ -193,7 +197,9 @@ export function completeTask(id, opts = {}) {
     S.bestStreak = Math.max(S.bestStreak, S.streak);
     if (S.pets && !hard) for (const id of Object.keys(S.pets)) S.pets[id].days = (S.pets[id].days || 0) + 1;
   }
-  bus.emit('task-done', { t, xp, gold, late: !!li.late, verified: !!opts.verified, perfect, hard, attr });
+  comboAfter(!!li.late);
+  const extra = afterTask(!!opts.verified);
+  bus.emit('task-done', { t, xp, gold, late: !!li.late, verified: !!opts.verified, perfect, hard, attr, combo, combos: S.combo, ...extra });
   checkAch();
   save();
   return { ok: true, xp, gold, late: !!li.late, perfect };
@@ -226,6 +232,7 @@ export function rollover() {
     const free = isRest(d) || tasksOn(d).length === 0;
     if (free) { if (S.lastGood === addDays(d, -1)) S.lastGood = d; }
     else if (S.lastGood !== d) S.streak = 0;
+    comboRollover(d);
     d = addDays(d, 1);
   }
   if (isRest(yesterday())) S.restedDay = t;
@@ -279,7 +286,7 @@ export const BOSS_RATE = 0.7;
 export const bossAllowed = () => bossRate() >= BOSS_RATE;
 
 // ---------- Monstros ----------
-// Fase → bioma. Depois da fase 70 os biomas se repetem no Modo Pesadelo.
+// Fase → bioma. Depois da última fase normal os biomas se repetem no Modo Pesadelo.
 export function biomeFor(st) {
   const i = Math.floor((st - 1) / 10);
   const b = BIOMES[i % BIOMES.length];
@@ -333,7 +340,7 @@ const COND = {
   cedo5: () => S.earlyBird >= 5, perf: () => S.perfectDays >= 1,
   str3: () => S.streak >= 3, str7: () => S.streak >= 7, pont20: () => S.onTime >= 20,
   k50: () => S.kills >= 50, k500: () => S.kills >= 500, mini: () => S.miniKills >= 1,
-  boss1: () => !!S.bosses['Slime Colossal'], boss2: () => !!S.bosses['Faraó Esquecido'], st71: () => S.maxStage >= 71,
+  boss1: () => !!S.bosses['Slime Colossal'], boss2: () => !!S.bosses['Faraó Esquecido'], st71: () => S.maxStage >= BIOMES.length * 10 + 1,
   st20: () => S.maxStage >= 20, lv5: () => S.level >= 5, lv10: () => S.level >= 10,
   forja: () => !!S.forged, andar: () => ((S.catDone && S.catDone.exe) || 0) >= 30, p100: () => (S.perfectDays || 0) >= 100, elite: () => (S.eliteKills || 0) >= 25, rest: () => S.restDays.some(d => d <= today())
 };

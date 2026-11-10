@@ -1,6 +1,6 @@
 // Equipamentos: catálogo, o que está vestido, forja por peça, poderes, capas e poções.
 import { S, bus, save } from './state.js';
-import { WEAPONS, ARMOR_SETS, SHIELDS, PIECES, ACH_GEAR, SHOP_CAPES, POTIONS, SLOTS, FORGE_MAX, FORGE_BONUS } from './data.js';
+import { WEAPONS, ARMOR_SETS, SHIELDS, PIECES, ACH_GEAR, SHOP_CAPES, POTIONS, SLOTS, FORGE_MAX, FORGE_BONUS, CLASS_WEAPON_NAMES } from './data.js';
 
 const PIECE_IDX = { h: 0, c: 1, l: 2 };
 const ICON = Object.fromEntries(SLOTS.map(s => [s.k, s.icon]));
@@ -22,8 +22,12 @@ function catalog() {
   SHOP_CAPES.forEach(c => { CAT[c.id] = { ...c, slot: 'k', kind: 'shop' }; });
   return CAT;
 }
-export const item = id => catalog()[id] || null;
-export const itemsOf = slot => Object.values(catalog()).filter(x => x.slot === slot);
+export const item = id => {
+  const it = catalog()[id] || null;
+  const names = it && it.slot === 'w' && it.kind === 'level' && S.hero && CLASS_WEAPON_NAMES[S.hero.cls];
+  return names ? { ...it, n: names[it.tier] } : it;
+};
+export const itemsOf = slot => Object.values(catalog()).filter(x => x.slot === slot).map(x => item(x.id));
 
 export function owned(id) {
   const it = item(id); if (!it) return false;

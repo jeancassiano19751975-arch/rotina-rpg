@@ -1,6 +1,6 @@
 // Primeira abertura: criar o herói, Conselho do Mestre (perguntas sobre a rotina) e permissões.
 import { S, save } from './state.js';
-import { SKINS, HAIRS, CLOTHES, CATS, WEEKDAYS } from './data.js';
+import { SKINS, HAIRS, CLOTHES, CATS, WEEKDAYS, HAIR_STYLES, CLASSES } from './data.js';
 import { drawPreview } from './game.js';
 import { isNative, askNotifications, checkExact, openExactSettings } from './notify.js';
 import { GOALS, DELAYS, TRAIN, FREE, defaultProfile, buildRoutine } from './mentor.js';
@@ -94,6 +94,9 @@ export function runOnboarding() {
       { html: () => shell('<h1>Crie seu herói</h1><div class="card box">' +
         '<div class="preview"><canvas id="ob-prev" width="160" height="176"></canvas></div>' +
         '<div class="field"><label for="ob-name">Nome do herói</label><input id="ob-name" maxlength="20" placeholder="Ex.: Jean" value="' + esc(cfg.name) + '"></div>' +
+        '<span class="lbl">Personagem</span><div class="seg" data-opt="sex">' + [['m', 'Herói'], ['f', 'Heroína']].map(([v, n]) => '<button type="button" data-v="' + v + '" aria-pressed="' + ((cfg.sex || 'm') === v) + '">' + n + '</button>').join('') + '</div>' +
+        '<span class="lbl">Classe</span><div class="seg-wrap" data-opt="cls">' + Object.entries(CLASSES).map(([v, c]) => '<button type="button" class="btn sm" data-v="' + v + '" aria-pressed="' + ((cfg.cls || 'guerreiro') === v) + '">' + c.n + '</button>').join('') + '</div><p class="hint" id="ob-cls">' + CLASSES[cfg.cls || 'guerreiro'].d + '</p>' +
+        '<span class="lbl">Penteado</span><div class="seg-wrap" data-opt="style">' + HAIR_STYLES.map((n, i) => '<button type="button" class="btn sm" data-v="' + i + '" aria-pressed="' + ((cfg.style || 0) === i) + '">' + n + '</button>').join('') + '</div>' +
         '<span class="lbl">Pele</span><div class="swatches" data-k="skin">' + SKINS.map((c, i) => '<button type="button" style="background:' + c + '" data-i="' + i + '" aria-pressed="' + (cfg.skin === i) + '" aria-label="Pele ' + (i + 1) + '"></button>').join('') + '</div>' +
         '<span class="lbl">Cabelo</span><div class="swatches" data-k="hair">' + HAIRS.map((c, i) => '<button type="button" style="background:' + c + '" data-i="' + i + '" aria-pressed="' + (cfg.hair === i) + '" aria-label="Cabelo ' + (i + 1) + '"></button>').join('') + '</div>' +
         '<span class="lbl">Roupa</span><div class="swatches" data-k="cloth">' + CLOTHES.map((c, i) => '<button type="button" style="background:' + c + '" data-i="' + i + '" aria-pressed="' + (cfg.cloth === i) + '" aria-label="Roupa ' + (i + 1) + '"></button>').join('') + '</div>' +
@@ -104,6 +107,14 @@ export function runOnboarding() {
             cfg[g.dataset.k] = Number(b.dataset.i); g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); draw();
           }));
           $('ob-name').oninput = e => { cfg.name = e.target.value; };
+          root.querySelectorAll('[data-opt]').forEach(g => g.querySelectorAll('button').forEach(b => b.onclick = () => {
+            const k = g.dataset.opt; cfg[k] = k === 'style' ? Number(b.dataset.v) : b.dataset.v;
+            if (k === 'sex' && cfg.style == null) cfg.style = 0;
+            if (k === 'sex') { cfg.style = b.dataset.v === 'f' ? 3 : 0; root.querySelectorAll('[data-opt="style"] button').forEach(x => x.setAttribute('aria-pressed', Number(x.dataset.v) === cfg.style)); }
+            g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+            if (k === 'cls') $('ob-cls').textContent = CLASSES[cfg.cls].d;
+            draw();
+          }));
         } },
 
       ...mentorSteps(prof, routine, shell),
@@ -135,7 +146,7 @@ export function runOnboarding() {
     const go = n => {
       cur = n;
       if (n >= steps.length) {
-        S.hero = { name: (cfg.name || '').trim() || 'Herói', skin: cfg.skin, hair: cfg.hair, cloth: cfg.cloth };
+        S.hero = { name: (cfg.name || '').trim() || (cfg.sex === 'f' ? 'Heroína' : 'Herói'), skin: cfg.skin, hair: cfg.hair, cloth: cfg.cloth, sex: cfg.sex || 'm', style: cfg.style || 0, cls: cfg.cls || 'guerreiro' };
         S.onboarded = true; S.lastNight = S.day; save(); root.hidden = true; root.innerHTML = ''; resolve(); return;
       }
       root.innerHTML = steps[n].html(); root.scrollTop = 0;

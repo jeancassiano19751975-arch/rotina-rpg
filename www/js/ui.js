@@ -1,13 +1,19 @@
 // Interface: HUD, abas, rotina, herói, conquistas, ajustes, toast e modal.
 import { S, save, today, addDays, parseDay, tMin, tGame, nowMin, newId, exportJSON, importJSON, resetAll } from './state.js';
-import { CATS, ATTRS, DURATIONS, WEEKDAYS, WEEKDAY_NAMES, PETS, PET_STAGES, RELICS, ACHIEVEMENTS, ACH_GEAR, SLOTS, POTIONS } from './data.js';
+import { CATS, ATTRS, DURATIONS, WEEKDAYS, WEEKDAY_NAMES, PETS, PET_STAGES, RELICS, ACHIEVEMENTS, ACH_GEAR, SLOTS, POTIONS, HAIR_STYLES, CLASSES, SKINS, HAIRS, CLOTHES } from './data.js';
 import {
   fmt, fmtTime, xpNeed, petStage, petSad, hasPet, heroStats, tasksOn, isRest, baseXP, lateInfo,
   predictXP, completeTask, toggleRest, restCountWeek, furyOn, tiredOn, restedOn, bossRate, bossAllowed, BOSS_RATE, slotKind
 } from './rules.js';
 import { item, equippedId, forgeLevel, statLine, buffOn } from './gear.js';
 import { renderVila, setVillageHooks } from './village.js';
-import { renderItem } from './game.js';
+import { renderItem, drawPreview } from './game.js';
+import { musicOn, sfxOn, setMusic, setSfx } from './audio.js';
+import { CAL, calState, dailyChallenge, dcProgress, dcName, comboMul, monthStats, REBIRTH_LVL, canRebirth, doRebirth, rebirthBonus, worldBoss, runDungeon, dungeonReward } from './daily.js';
+import { unlock as unlockStory, playQueued } from './story.js';
+import { renderMonThumb, drawDuel } from './game.js';
+import { mStats } from './rules.js';
+import { MONSTERS } from './data.js';
 import { eventNow, EVENT_NAMES } from './events.js';
 import { isHard, setHard, essentials, hardCountWeek, HARD_PER_WEEK } from './rules.js';
 import {
@@ -98,7 +104,7 @@ export function renderToday() {
   const doneN = list.filter(t => lg[t.id]).length;
   const nx = list.find(t => !lg[t.id] && !lateInfo(t).locked);
   const hard = isHard(k), ess = hard ? essentials(k).map(t => t.id) : [];
-  let html = updateCard() + focusCard();
+  let html = updateCard() + focusCard() + dailyCard();
   html += '<p class="hint">Hoje, ' + dname + ': ' + doneN + ' de ' + list.length + ' missões. O jogo decide o XP de cada uma; o dia vale até 300 XP.' +
     (restedOn() ? ' <b style="color:var(--grass)">Descansado: +10% nas missões da manhã.</b>' : '') + '</p>';
   if (hard) html += '<div class="card-note hard-on"><b>Dia difícil ligado.</b> Só as missões <b>essenciais</b> contam para a sequência; o XP de hoje vale metade. Força: amanhã é outro dia.' +
@@ -128,7 +134,7 @@ export function renderToday() {
   }
   html += '</ul>';
   html += '<p class="hint">⏱ <b>Modo foco:</b> liga um cronômetro com a duração da missão. Terminando, ela conta como verificada (+50% de XP).</p>';
-  html += weeklyCard() + summaryCard() + diaryCard(k);
+  html += worldCard() + weeklyCard() + summaryCard() + monthCard() + diaryCard(k);
   p.innerHTML = html;
   drawWeekChart();
   bindToday(p);
@@ -159,6 +165,44 @@ function bindUpdate(p) {
   $('upd-bk').onclick = async () => { try { const r = await shareBackup(exportJSON()); toast(r === 'shared' ? 'Escolha onde salvar o backup' : 'Backup baixado'); } catch (e) { toast('Não deu para exportar: ' + e.message); } };
   $('upd-later').onclick = () => { update.hidden = true; renderToday(); };
 }
+// ---------- calendário de 7 dias, desafio do dia e combo ----------
+const CAL_IC = { gold: '🪙', potion: '🧪', gem: '💎', chest: '🎁' };
+function dailyCard() {
+  const c = calState(), doneToday = c.last === today();
+  let h = '<div class="daily"><div class="cal-head"><span class="eyebrow">Calendário de 7 dias</span><span class="muted">' + (doneToday ? 'prêmio de hoje já pego ✔' : 'cumpra 1 missão para pegar o prêmio') + '</span></div><div class="cal">';
+  for (let i = 0; i < 7; i++) {
+    const got = i < c.idx || (doneToday && c.idx === 0 && false), cur = i === c.idx && !doneToday;
+    const st = i < c.idx ? ' got' : cur ? ' cur' : '';
+    h += '<div class="cal-d' + st + (i === 6 ? ' big' : '') + '"><b>' + (i + 1) + '</b><span>' + CAL_IC[CAL[i].ic] + '</span><small>' + CAL[i].n + '</small></div>';
+  }
+  h += '</div><p class="hint" style="margin:4px 0 0">Faltou um dia? Tudo bem: o calendário só pausa, não volta ao começo.</p>';
+  const dc = dailyChallenge();
+  if (!dc.none) {
+    const v = dcProgress(dc);
+    h += '<div class="dc' + (dc.claimed ? ' ok' : '') + '"><span class="eyebrow">Desafio do dia</span><b>' + (dc.claimed ? '✔ ' : '') + esc(dcName(dc)) + '</b><span class="muted">' + v + '/' + dc.target + (dc.claimed ? ' · prêmio recebido' : ' · prêmio: ouro e chance de gema') + '</span></div>';
+  }
+  const cb = S.combo || 0;
+  h += '<div class="combo"><span class="eyebrow">Combo</span><b>' + (cb ? cb + ' seguidas no horário · XP ×' + comboMul(cb).toFixed(2) : 'Faça missões no horário para começar um combo') + '</b><span class="muted">+5% de XP por missão seguida no horário (até +50%). Atrasar zera.</span></div></div>';
+  return h;
+}
+function worldCard() {
+  const wb = worldBoss(), m = MONSTERS[wb.key];
+  return '<div class="wb' + (wb.killed ? ' ok' : '') + '"><canvas id="wb-cv" width="96" height="80"></canvas><div><span class="eyebrow">Chefão do mês</span><b>' + esc(m ? m.n : 'Titã') + ' Titã</b>' +
+    '<div class="bar"><i style="width:' + (wb.hp / wb.max * 100) + '%;background:#ff6a8a"></i></div>' +
+    '<small class="muted">' + (wb.killed ? 'Derrotado! Volta outro titã no mês que vem.' : 'Faltam ' + wb.hp + ' golpes. Cada missão cumprida = 1 golpe (verificada = 2).') + '</small></div></div>';
+}
+function monthCard() {
+  const M = monthStats(), pct = M.tot ? Math.round(M.done / M.tot * 100) : 0;
+  let h = '<details class="month"><summary><span class="h3" style="display:inline">Resumo de ' + M.month + '</span></summary><div class="mgrid">';
+  for (const d of M.days) {
+    const cls = d.future ? 'f' : d.rest ? 'r' : !d.tot ? 'n' : d.done === d.tot ? 'p' : d.done ? 'h' : 'z';
+    h += '<i class="m-' + cls + '" title="' + d.k.slice(8) + '"></i>';
+  }
+  h += '</div><p class="hint">🟩 dia perfeito · 🟨 parte · ⬛ nada · 🟧 descanso</p>';
+  h += '<div class="mstats"><div><b>' + M.done + '</b><span>missões (' + pct + '%)</span></div><div><b>' + M.perfect + '</b><span>dias perfeitos</span></div><div><b>' + M.best + '</b><span>melhor sequência</span></div>' +
+    '<div><b>' + (M.done ? Math.round(M.ontime / M.done * 100) : 0) + '%</b><span>no horário</span></div><div><b>' + (M.topCat || '—') + '</b><span>mais cumprida</span></div><div><b>' + (M.topHour != null ? M.topHour + 'h' : '—') + '</b><span>seu horário forte</span></div></div></details>';
+  return h;
+}
 function focusCard() {
   const f = S.focusRun; if (!f) return '';
   const t = S.tasks.find(x => x.id === f.id), left = focusLeft();
@@ -178,6 +222,8 @@ function weeklyCard() {
       '<div class="bar"><i style="width:' + (v / g.target * 100) + '%;background:' + (ok ? 'var(--grass)' : 'var(--gold)') + '"></i></div></div>';
   }
   h += '</div>';
+  if (done && isSunday() && S.dungeonWk !== S.weekly.wk) h += '<div class="form-acts"><button class="btn gold-btn" type="button" id="dungeon">⚔️ Entrar na Masmorra da Semana</button></div>';
+  else h += '<p class="hint">⚔️ Masmorra da semana: cumpra as 3 missões da semana e entre no domingo. Recorde: ' + (S.dungeonBest || 0) + ' sala(s).</p>';
   if (S.weekly.opened) h += '<p class="hint" style="color:var(--grass)">Baú da semana aberto! Novas missões na segunda.</p>';
   else if (chestReady()) h += '<div class="form-acts"><button class="btn gold-btn" type="button" id="wk-open">Abrir o baú da semana</button></div>';
   else if (done) h += '<p class="hint" style="color:var(--gold)">Tudo feito! O baú abre no domingo.</p>';
@@ -221,6 +267,8 @@ function diaryCard(k) {
 }
 function bindToday(p) {
   bindUpdate(p);
+  const wcv = $('wb-cv'); if (wcv) { const wb = worldBoss(); renderMonThumb(wcv, wb.key, { kind: 'boss' }); }
+  const dg = $('dungeon'); if (dg) dg.onclick = () => playDungeon();
   p.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { const r = focusStart(b.dataset.focus); if (r.error) toast(r.error); else { toast('Foco ligado! Bora.'); changed(); } });
   const fd = $('focus-done'); if (fd) fd.onclick = () => { const r = focusFinish(); if (r.error) toast(r.error); changed(); };
   const fc = $('focus-cancel'); if (fc) fc.onclick = () => modal({ title: 'Cancelar o foco?', text: 'O cronômetro para e a missão continua aberta.', actions: [{ label: 'Continuar focando', cls: 'gold-btn' }, { label: 'Cancelar foco', cls: 'danger', fn: () => { focusCancel(); changed(); } }] });
@@ -228,6 +276,35 @@ function bindToday(p) {
   const hf = $('hard-off'); if (hf) hf.onclick = () => { const r = setHard(false); if (r.error) toast(r.error); changed(); };
   const wo = $('wk-open'); if (wo) wo.onclick = () => { const r = openWeekly(); if (r.error) toast(r.error); else { toast(r.text); changed(); } };
   const ds = $('diary-save'); if (ds) ds.onclick = () => { saveDiary($('diary').value); toast('Diário salvo'); renderToday(); };
+}
+// ---------- Masmorra: as salas passam uma por uma, com os chefões ----------
+function playDungeon() {
+  S.dungeonWk = S.weekly.wk;
+  const res = runDungeon(heroStats(), mStats);
+  const ov = document.createElement('div'); ov.className = 'story';
+  ov.innerHTML = '<div class="st-wrap"><canvas width="640" height="300"></canvas><div class="st-title">Masmorra da Semana</div><div class="st-box"><b class="st-who"></b><p class="st-txt"></p></div><button type="button" class="btn sm st-skip">Pular</button></div>';
+  document.body.appendChild(ov);
+  const cv = ov.querySelector('canvas'), who = ov.querySelector('.st-who'), tx = ov.querySelector('.st-txt');
+  let i = 0, t0 = performance.now(), raf = 0, ended = false;
+  const finish = () => {
+    if (ended) return; ended = true; cancelAnimationFrame(raf);
+    const rec = dungeonReward(res);
+    who.textContent = 'Fim da masmorra'; tx.textContent = res.cleared + ' sala(s) vencida(s). Prêmio: +' + fmt(res.gold) + ' de ouro' + (res.gems ? ' e ' + res.gems + ' gema(s)' : '') + (rec ? '. NOVO RECORDE!' : '.');
+    ov.onclick = () => { ov.remove(); changed(); };
+    ov.querySelector('.st-skip').textContent = 'Fechar';
+  };
+  const loop = now => {
+    const t = (now - t0) / 1000, R0 = res.rooms[i];
+    if (!R0) { finish(); return; }
+    const p = Math.min(1, t / 1.8), hs = heroStats().maxHp;
+    const hf = (R0.before - (R0.before - R0.after) * p) / hs, bf = R0.win ? 1 - p : 1 - p * 0.6;
+    who.textContent = 'Sala ' + (i + 1); tx.textContent = (MONSTERS[R0.key] ? MONSTERS[R0.key].n : '') + (p >= 1 ? (R0.win ? ' · vencido!' : ' · o herói caiu') : ' · lutando…');
+    drawDuel(cv, R0.key, t, hf, bf, p >= 1 ? (R0.win ? 'VITÓRIA!' : 'DERROTA') : 'SALA ' + (i + 1));
+    if (t > 2.4) { i++; t0 = now; }
+    raf = requestAnimationFrame(loop);
+  };
+  ov.querySelector('.st-skip').onclick = e => { e.stopPropagation(); if (!ended) finish(); else { ov.remove(); changed(); } };
+  raf = requestAnimationFrame(loop);
 }
 // Atualiza só o cronômetro do foco, sem redesenhar a aba.
 let focusAlerted = false;
@@ -351,6 +428,10 @@ export function renderHero() {
   html += rel.length ? '<div class="relics">' + rel.map(r => '<div class="relic"><b>' + RELICS[r].n + '</b><span>' + RELICS[r].d + '</span></div>').join('') + '</div>'
     : '<p class="hint">Nenhuma ainda. Relíquias vêm de conquistas especiais, como 7 dias perfeitos seguidos.</p>';
 
+  html += '<span class="h3">Renascer</span>';
+  html += '<p class="hint">' + (S.rebirths ? 'Você já renasceu ' + S.rebirths + ' vez(es): +' + Math.round(rebirthBonus() * 100) + '% de ataque e de vida para sempre, com aura. ' : '') +
+    'No nível ' + REBIRTH_LVL + ' você pode renascer: volta ao nível 1 e à fase 1, mas fica com +10% de ataque e de vida para sempre, ganha uma aura nova e um título. Equipamentos de conquista, capas, pets, cartas, gemas e ouro continuam com você.</p>';
+  html += '<div class="form-acts"><button class="btn sm' + (canRebirth() ? ' gold-btn' : '') + '" type="button" id="rebirth"' + (canRebirth() ? '' : ' disabled') + '>' + (canRebirth() ? 'Renascer agora' : 'Libera no nível ' + REBIRTH_LVL + ' (você está no ' + S.level + ')') + '</button></div>';
   html += '<span class="h3">Título</span>';
   html += S.titles.length ? '<div class="field"><select id="title-sel">' + S.titles.map(t => '<option' + (t === S.title ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div>'
     : '<p class="hint">Conquistas dão títulos que aparecem embaixo do seu nome.</p>';
@@ -358,6 +439,8 @@ export function renderHero() {
   html += '<span class="h3">Recordes</span><p class="hint">Maior sequência: ' + S.bestStreak + ' dia(s) · Fase máxima: ' + S.maxStage + ' · Monstros: ' + fmt(S.kills) + ' · Chefões: ' + S.bossKills + ' · Missões: ' + S.tasksDone + '</p>';
   p.innerHTML = html;
   p.querySelectorAll('[data-hic]').forEach(cv => { const it = item(cv.dataset.hic); renderItem(cv, it.vis, it.slot === 'k' ? 'cape' : SLOTS.find(x => x.k === it.slot).icon, 2); });
+  const rb = $('rebirth'); if (rb) rb.onclick = () => modal({ title: 'Renascer?', text: 'Seu herói volta ao nível 1 e à fase 1, com +10% de ataque e de vida para sempre e uma aura nova. Conquistas, equipamentos de conquista, capas, pets, cartas, gemas e ouro continuam. Não dá para desfazer.', actions: [
+    { label: 'Agora não' }, { label: 'Renascer', cls: 'gold-btn', fn: () => { const r = doRebirth(); if (r.error) toast(r.error); else { toast('Você renasceu! Título: ' + r.title); unlockStory('renascer'); changed(); setTimeout(playQueued, 800); } } }] });
   const ts = $('title-sel'); if (ts) ts.onchange = () => { S.title = ts.value; save(); renderHUD(); };
   p.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => { S.pet = b.dataset.pet; save(); toast(S.pets[S.pet].name + ' vai com você'); renderHero(); });
   const pn = $('pet-save'); if (pn) pn.onclick = () => { const v = $('pet-name').value.trim(); if (v) { S.pets[S.pet].name = v; save(); toast('Nome salvo'); renderHero(); } };
@@ -393,6 +476,10 @@ export function renderSettings() {
 
   html += '<span class="h3">Conselho do Mestre</span><p class="hint">Responda de novo as perguntas sobre sua rotina e o Mestre monta novas missões, com as de foco ⭐. Sua rotina atual é substituída se você aceitar.</p>' +
     '<div class="form-acts"><button class="btn sm" type="button" id="mentor">Falar com o Mestre</button></div>';
+  html += '<span class="h3">Som</span>';
+  html += '<div class="toggle"><span class="lbl">Música:</span><div class="seg"><button type="button" data-mus="1" aria-pressed="' + musicOn() + '">Ligada</button><button type="button" data-mus="0" aria-pressed="' + !musicOn() + '">Desligada</button></div></div>';
+  html += '<div class="toggle"><span class="lbl">Efeitos:</span><div class="seg"><button type="button" data-sfx="1" aria-pressed="' + sfxOn() + '">Ligados</button><button type="button" data-sfx="0" aria-pressed="' + !sfxOn() + '">Desligados</button></div></div>';
+  html += '<p class="hint">Cada lugar tem a sua música 8-bit; os chefões, a vila e o dia de descanso têm músicas próprias.</p>';
   html += '<span class="h3">Frases motivacionais</span>';
   html += '<div class="toggle"><div class="seg"><button type="button" data-phr="1" aria-pressed="' + S.phrasesOn + '">Ligadas</button><button type="button" data-phr="0" aria-pressed="' + !S.phrasesOn + '">Desligadas</button></div></div>';
   html += '<div class="field"><label for="custom">Suas frases (uma por linha). Elas entram no sorteio.</label><textarea id="custom" rows="3" placeholder="Ex.: Bora, Jean! O dia é seu.">' + esc(S.customPhrases.join('\n')) + '</textarea></div>';
@@ -417,6 +504,14 @@ export function renderSettings() {
   html += '<div class="form-acts"><button class="btn gold-btn sm" type="button" id="bk-exp">Exportar backup</button><label class="btn sm" for="bk-file">Importar arquivo</label><input type="file" id="bk-file" accept="application/json,.json" hidden></div>';
 
   html += '<span class="h3">Herói</span><div class="field"><label for="hero-name">Nome</label><input id="hero-name" maxlength="20" value="' + esc(S.hero.name) + '"></div>';
+  const H = S.hero, sw = (k, list) => '<div class="swatches">' + list.map((c, i) => '<button type="button" style="background:' + c + '" data-hk="' + k + '" data-v="' + i + '" aria-pressed="' + ((H[k] || 0) === i) + '"></button>').join('') + '</div>';
+  html += '<div class="hero-edit"><canvas id="hero-prev" width="120" height="132"></canvas><div>' +
+    '<span class="lbl">Personagem</span><div class="seg">' + [['m', 'Herói'], ['f', 'Heroína']].map(([v, n]) => '<button type="button" data-hk="sex" data-v="' + v + '" aria-pressed="' + ((H.sex || 'm') === v) + '">' + n + '</button>').join('') + '</div>' +
+    '<span class="lbl">Classe</span><div class="seg-wrap">' + Object.entries(CLASSES).map(([v, c]) => '<button type="button" class="btn sm' + ((H.cls || 'guerreiro') === v ? ' gold-btn' : '') + '" data-hk="cls" data-v="' + v + '">' + (H.sex === 'f' ? c.nf : c.n) + '</button>').join('') + '</div>' +
+    '<p class="hint">' + CLASSES[H.cls || 'guerreiro'].d + '</p></div></div>' +
+    '<span class="lbl">Penteado</span><div class="seg-wrap">' + HAIR_STYLES.map((n, i) => '<button type="button" class="btn sm' + ((H.style || 0) === i ? ' gold-btn' : '') + '" data-hk="style" data-v="' + i + '">' + n + '</button>').join('') + '</div>' +
+    '<span class="lbl">Pele</span>' + sw('skin', SKINS) + '<span class="lbl">Cabelo</span>' + sw('hair', HAIRS) + '<span class="lbl">Roupa</span>' + sw('cloth', CLOTHES) +
+    '<p class="hint">Trocar a aparência ou a classe é grátis e não perde nada.</p>';
   const bd = (S.birthday || '').split('-');
   html += '<div class="form-row"><div class="field"><label for="bd-d">Aniversário: dia</label><select id="bd-d"><option value="">--</option>' + Array.from({ length: 31 }, (_, i) => '<option' + (Number(bd[1]) === i + 1 ? ' selected' : '') + '>' + (i + 1) + '</option>').join('') + '</select></div>' +
     '<div class="field"><label for="bd-m">mês</label><select id="bd-m"><option value="">--</option>' + ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'].map((m, i) => '<option value="' + (i + 1) + '"' + (Number(bd[0]) === i + 1 ? ' selected' : '') + '>' + m + '</option>').join('') + '</select></div></div>' +
@@ -426,6 +521,8 @@ export function renderSettings() {
 
   p.querySelectorAll('[data-rpw]').forEach(b => b.onclick = () => { S.restPerWeek = Number(b.dataset.rpw); changed(); });
   p.querySelectorAll('[data-rest]').forEach(b => b.onclick = () => { const r = toggleRest(b.dataset.rest); if (r.error) toast(r.error); else { toast(r.on ? 'Descanso marcado 🔥' : 'Descanso removido'); changed(); } });
+  p.querySelectorAll('[data-mus]').forEach(b => b.onclick = () => { setMusic(b.dataset.mus === '1'); renderSettings(); });
+  p.querySelectorAll('[data-sfx]').forEach(b => b.onclick = () => { setSfx(b.dataset.sfx === '1'); renderSettings(); });
   p.querySelectorAll('[data-phr]').forEach(b => b.onclick = () => { S.phrasesOn = b.dataset.phr === '1'; changed(); });
   $('mentor').onclick = async () => { await runMentor(); changed(); };
   $('save-phr').onclick = () => { S.customPhrases = $('custom').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 50); save(); toast('Frases salvas'); };
@@ -445,6 +542,13 @@ export function renderSettings() {
     ] });
     rd.readAsText(f);
   };
+  p.querySelectorAll('[data-hk]').forEach(b => b.onclick = () => {
+    const k = b.dataset.hk, v = b.dataset.v;
+    S.hero[k] = k === 'sex' || k === 'cls' ? v : Number(v);
+    if (k === 'sex' && b.getAttribute('aria-pressed') !== 'true') S.hero.style = v === 'f' ? 3 : 0;
+    save(); changeHook(); renderSettings(); renderHUD();
+  });
+  const hp = $('hero-prev'); if (hp) drawPreview(hp, S.hero);
   $('save-name').onclick = () => {
     S.hero.name = $('hero-name').value.trim() || 'Herói';
     const d = $('bd-d').value, m = $('bd-m').value;
