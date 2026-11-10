@@ -2,7 +2,7 @@
 import { S, save } from './state.js';
 import { SLOTS, SHOP_CAPES, POTIONS, BIOMES, MONSTERS, FORGE_MAX } from './data.js';
 import {
-  item, itemsOf, owned, equippedId, equip, unequip, forgeLevel, forgeCost, doForge, statLine,
+  itemStats, item, itemsOf, owned, equippedId, equip, unequip, forgeLevel, forgeCost, doForge, statLine,
   potionPrice, buyCape, buyPotion, usePotion, buffOn, slotIcon
 } from './gear.js';
 import { fmt } from './rules.js';
@@ -52,13 +52,16 @@ const ic = (key, size = 44) => '<canvas class="v-ic" width="' + size + '" height
 function paintIcons(root) {
   root.querySelectorAll('[data-ic]').forEach(cv => {
     const k = cv.dataset.ic;
-    if (k.startsWith('potion:')) { renderItem(cv, POTIONS[k.slice(7)], 'potion', 2); return; }
-    const it = item(k); if (!it) return;
-    const f = iconFor(it); renderItem(cv, f.vis, f.kind, 2);
+    try {
+      if (k.startsWith('potion:')) { renderItem(cv, POTIONS[k.slice(7)], 'potion', 2); return; }
+      const it = item(k); if (!it) return;
+      const f = iconFor(it); renderItem(cv, f.vis, f.kind, 2);
+    } catch (e) { console.warn('ícone', k, e); }     // um ícone com problema não trava a tela
   });
   root.querySelectorAll('[data-mon]').forEach(cv => {
     const [key, kind, v] = cv.dataset.mon.split('|'), def = MONSTERS[key];
-    renderMonThumb(cv, key, { kind, unknown: cv.dataset.unk === '1', pal: v && def.variant ? def.variant.pal : null });
+    try { renderMonThumb(cv, key, { kind, unknown: cv.dataset.unk === '1', pal: v && def.variant ? def.variant.pal : null }); }
+    catch (e) { console.warn('bestiário', key, e); }
   });
 }
 
@@ -94,14 +97,15 @@ function shopHTML() {
 
 // ---------- Ferreiro ----------
 function forgeHTML() {
-  let h = '<p class="hint">O ferreiro fortalece a peça que você está usando: cada +1 deixa ela 15% mais forte (escudo: +2% de bloqueio). Vai até +' + FORGE_MAX + '. A forja fica na peça, mesmo se você trocar e voltar.</p><div class="v-list">';
+  let h = '<p class="hint">O ferreiro fortalece a peça que você está usando: cada +1 deixa ela 15% mais forte (escudo: +2% de bloqueio). Vai até +' + FORGE_MAX + '. A forja fica na peça, mesmo se você trocar e voltar. Peças iniciais (espada de madeira, roupa de viajante) não têm atributos para forjar: a primeira de verdade chega subindo de nível.</p><div class="v-list">';
   for (const s of SLOTS) {
     if (s.k === 'k') continue;
     const id = equippedId(s.k);
     if (!id) { h += '<div class="eq v-item v-lock"><span class="v-ic"></span><div><b>' + s.one + '</b><small>Nada equipado</small></div><span></span></div>'; continue; }
-    const it = item(id), f = forgeLevel(id);
+    const it = item(id), f = forgeLevel(id), st = itemStats(id);
     let act;
-    if (f >= FORGE_MAX) act = '<span class="chip ok">+' + FORGE_MAX + ' máx</span>';
+    if (!st.atk && !st.def && !st.hp && !st.block) act = '<span class="chip">sem atributos</span>';
+    else if (f >= FORGE_MAX) act = '<span class="chip ok">+' + FORGE_MAX + ' máx</span>';
     else { const c = forgeCost(id); act = '<button class="btn sm' + (S.gold >= c ? ' gold-btn' : '') + '" type="button" data-forge="' + id + '">Forjar +' + (f + 1) + ' · ' + fmt(c) + '</button>'; }
     h += '<div class="eq v-item">' + ic(id) + '<div><b>' + esc(it.n) + (f ? ' +' + f : '') + '</b><small>' + s.one + ' · ' + statLine(id) + '</small></div>' + act + '</div>';
   }

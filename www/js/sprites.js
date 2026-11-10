@@ -9,6 +9,7 @@ export const setCtx = c => { ctx = c; };
 export const setFlash = f => { FL = f; };
 export const setBuf = b => { BUF = b; };
 export function R(x, y, w, h, c) {
+  if (!c) return;                                // cor vazia (ex.: roupa de viajante): não desenha nada
   if (BUF && c.charCodeAt(0) === 114) return; // 'rgba(...)': sombra no chão fica fora do sprite
   ctx.fillStyle = FL === 1 ? '#ffffff' : FL === 2 ? '#ff5a48' : c;
   ctx.fillRect(Math.round(x), Math.round(y), w, h);
@@ -345,6 +346,9 @@ export function drawItemIcon(x, y, item, kind) {
     R(x - 5, y - 15, 2, 11, shade(item.main, 0.3)); R(x - 1, y - 12, 2, 2, item.emb); R(x - 3, y - 10, 6, 3, item.emb); R(x - 1, y - 7, 2, 2, item.emb);
   } else if (kind === 'helm') {
     R(x - 6, y - 12, 12, 8, item.main); R(x - 5, y - 12, 8, 2, item.light); R(x - 6, y - 4, 4, 4, item.dark); R(x + 2, y - 6, 4, 6, item.main); R(x + 2, y - 4, 4, 1, '#14141c');
+  } else if ((kind === 'chest' || kind === 'legs') && !item.main) {
+    item = kind === 'chest' ? { main: '#3d7bd9', dark: '#2a5aa8', light: '#6a9ae8' } : { main: '#5a4632', dark: '#3e3022', light: '#7a6248' };
+    drawItemIcon(x, y, item, kind);
   } else if (kind === 'chest') {
     R(x - 8, y - 12, 16, 4, item.main); R(x - 6, y - 8, 12, 8, item.main); R(x - 8, y - 12, 16, 1, item.light);
     R(x - 1, y - 8, 2, 6, item.light); R(x + 3, y - 8, 3, 8, item.dark);

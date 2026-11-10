@@ -120,6 +120,7 @@ export function doForge(id) {
   if (!it || !owned(id)) return { error: 'Você não tem essa peça.' };
   if (it.slot === 'k') return { error: 'Capas não são forjadas.' };
   if (forgeLevel(id) >= FORGE_MAX) return { error: 'Já está no máximo (+' + FORGE_MAX + ').' };
+  const st = itemStats(id); if (!st.atk && !st.def && !st.hp && !st.block) return { error: 'Essa peça não tem atributos para forjar.' };
   const c = forgeCost(id);
   if (S.gold < c) return { error: 'Faltam ' + Math.ceil(c - S.gold).toLocaleString('pt-BR') + ' de ouro.' };
   S.gold -= c; S.forgeItem = S.forgeItem || {}; S.forgeItem[id] = forgeLevel(id) + 1; S.forged = true;
@@ -172,6 +173,20 @@ export function checkGear() {
 }
 
 // Saves antigos (até a 1.1): forja por espaço vira forja por peça.
+// Ouro gasto forjando peça sem atributos (espada de madeira, roupa de viajante) volta para o jogador.
+export function refundEmptyForge() {
+  if (!S.forgeItem) return 0;
+  let back = 0;
+  for (const id of Object.keys(S.forgeItem)) {
+    const it = item(id); if (!it || it.kind !== 'level') continue;
+    const st = itemStats(id); if (st.atk || st.def || st.hp || st.block) continue;
+    const t = it.tier;
+    for (let f = 0; f < S.forgeItem[id]; f++) back += Math.round(150 * (t + 1) * Math.pow(f + 1, 2));
+    delete S.forgeItem[id];
+  }
+  if (back) { S.gold += back; save(); }
+  return back;
+}
 export function migrateGear3() {
   if (S.gearV === 3) return;
   S.forgeItem = S.forgeItem || {};

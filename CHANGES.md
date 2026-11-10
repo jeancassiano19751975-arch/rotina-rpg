@@ -1,3 +1,9 @@
+Versão 3.3: Ferreiro consertado
+
+- O Ferreiro e a Loja não travam mais (o desenho da roupa de viajante quebrava a tela)
+- Espada de madeira e roupa de viajante não podem mais ser forjadas (não têm atributos)
+- O ouro gasto forjando essas peças volta para você
+
 Versão 3.2: assinatura fixa de verdade
 
 - Toda versão nova agora sai com a mesma assinatura e instala por cima da anterior, sem perder o progresso

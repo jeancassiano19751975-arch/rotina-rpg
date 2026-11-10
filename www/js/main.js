@@ -2,7 +2,7 @@
 import { S, bus, load, save, today, nowMin } from './state.js';
 import { CATS, ATTRS, ACH_GEAR } from './data.js';
 import { isBirthday } from './events.js';
-import { checkGear } from './gear.js';
+import { checkGear, refundEmptyForge } from './gear.js';
 import { migrateGear, checkAch, rollover, offlineProgress, completeTask, isRest, tasksOn, weekRate, fmt } from './rules.js';
 import { startGame, float, burst, banner, queueChest, fullHeal, shakeScreen, petCheer } from './game.js';
 import { GY } from './sprites.js';
@@ -146,6 +146,8 @@ async function boot() {
   load();
   if (S.onboarded) playIntro();
   migrateGear();
+  const refund = refundEmptyForge();
+  if (refund) setTimeout(() => toast('Devolvemos ' + fmt(refund) + ' de ouro gasto forjando peça sem atributos.'), 2000);
   await fromNotifications();
   rollover();
   if (!S.onboarded) await runOnboarding();
