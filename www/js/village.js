@@ -6,7 +6,7 @@ import {
   potionPrice, buyCape, buyPotion, usePotion, buffOn, slotIcon
 } from './gear.js';
 import { fmt } from './rules.js';
-import { drawVillage, renderItem, renderMonThumb } from './game.js';
+import { drawVillage, renderItem, renderMonThumb, clearVillageCache } from './game.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -26,13 +26,16 @@ const PLACES = [
 function loop(now) {
   const cv = $('vila-cv');
   if (!cv || $('p-vila').hidden || document.hidden) { V.raf = 0; return; }
-  const dt = Math.min(0.05, ((now - (V.last || now)) / 1000)); V.last = now;
+  if (V.last && now - V.last < 45) { V.raf = requestAnimationFrame(loop); return; }   // ~20 quadros por segundo bastam
+  const dt = Math.min(0.1, ((now - (V.last || now)) / 1000)); V.last = now;
   V.t += dt; V.hit = Math.max(0, V.hit - dt);
   const o = { t: V.t, sel: V.sel, merc: mercOpen(), lib: libOpen(), hit: V.hit, hx: V.hx };
-  drawVillage(cv, o); V.hx = o.hx; V.spots = o.spots;
+  try { drawVillage(cv, o); V.hx = o.hx; V.spots = o.spots; }
+  catch (e) { console.warn('vila', e); }            // um erro de desenho nunca para a animação
   V.raf = requestAnimationFrame(loop);
 }
-function startLoop() { if (!V.raf) { V.last = 0; V.raf = requestAnimationFrame(loop); } }
+// Sempre reinicia (antes, se a animação parasse por erro, ela nunca mais voltava).
+function startLoop() { if (V.raf) cancelAnimationFrame(V.raf); V.last = 0; V.raf = requestAnimationFrame(loop); }
 
 function pick(id) {
   if (id === 'mercador' && !mercOpen()) { hooks.toast('O Mercador chega à vila no nível ' + MERC_LVL + '.'); return; }
@@ -99,7 +102,7 @@ function forgeHTML() {
     const it = item(id), f = forgeLevel(id);
     let act;
     if (f >= FORGE_MAX) act = '<span class="chip ok">+' + FORGE_MAX + ' máx</span>';
-    else { const c = forgeCost(id); act = '<button class="btn sm' + (S.gold >= c ? ' gold-btn' : '') + '" type="button" data-forge="' + id + '"' + (S.gold >= c ? '' : ' disabled') + '>Forjar +' + (f + 1) + ' · ' + fmt(c) + '</button>'; }
+    else { const c = forgeCost(id); act = '<button class="btn sm' + (S.gold >= c ? ' gold-btn' : '') + '" type="button" data-forge="' + id + '">Forjar +' + (f + 1) + ' · ' + fmt(c) + '</button>'; }
     h += '<div class="eq v-item">' + ic(id) + '<div><b>' + esc(it.n) + (f ? ' +' + f : '') + '</b><small>' + s.one + ' · ' + statLine(id) + '</small></div>' + act + '</div>';
   }
   return h + '</div>';
@@ -114,14 +117,14 @@ function mercHTML() {
     const n = S.potions[k] || 0, pr = potionPrice(k), on = buffOn(k);
     const left = on ? Math.ceil((S.buffs[k] - Date.now()) / 60000) : 0;
     h += '<div class="eq v-item">' + ic('potion:' + k) + '<div><b>' + P.n + '</b> <span class="chip">' + n + ' na bolsa</span>' + (on ? ' <span class="chip ok">ativa ' + left + ' min</span>' : '') + '<small>' + P.d + '</small></div>' +
-      '<div class="v-acts"><button class="btn sm' + (S.gold >= pr ? ' gold-btn' : '') + '" type="button" data-buyp="' + k + '"' + (S.gold >= pr ? '' : ' disabled') + '>Comprar · ' + fmt(pr) + '</button>' +
+      '<div class="v-acts"><button class="btn sm' + (S.gold >= pr ? ' gold-btn' : '') + '" type="button" data-buyp="' + k + '">Comprar · ' + fmt(pr) + '</button>' +
       (k !== 'vida' && n ? '<button class="btn sm" type="button" data-usep="' + k + '">Usar</button>' : '') + '</div></div>';
   }
   h += '</div><span class="h3">Capas</span><p class="hint">Só visual: deixam o herói com a sua cara.</p><div class="v-list">';
   for (const c of SHOP_CAPES) {
     const got = owned(c.id), on = equippedId('k') === c.id;
     const act = on ? '<span class="chip ok">Equipada</span>' : got ? '<button class="btn sm gold-btn" type="button" data-eq="' + c.id + '">Equipar</button>'
-      : '<button class="btn sm' + (S.gold >= c.price ? ' gold-btn' : '') + '" type="button" data-buyc="' + c.id + '"' + (S.gold >= c.price ? '' : ' disabled') + '>Comprar · ' + fmt(c.price) + '</button>';
+      : '<button class="btn sm' + (S.gold >= c.price ? ' gold-btn' : '') + '" type="button" data-buyc="' + c.id + '">Comprar · ' + fmt(c.price) + '</button>';
     h += '<div class="eq v-item">' + ic(c.id) + '<div><b>' + c.n + '</b><small>' + (got ? 'Sua' : fmt(c.price) + ' de ouro') + '</small></div>' + act + '</div>';
   }
   return h + '</div>';
@@ -159,6 +162,7 @@ function libHTML() {
 // ---------- aba ----------
 export function renderVila() {
   const p = $('p-vila');
+  clearVillageCache();          // roupa ou pet podem ter mudado
   let h = '<div class="scene-wrap box v-scene"><canvas id="vila-cv" width="640" height="300" aria-label="Vila: toque num prédio"></canvas></div>';
   h += '<div class="seg-wrap v-nav">' + PLACES.map(pl => {
     const lock = (pl.id === 'mercador' && !mercOpen()) || (pl.id === 'biblioteca' && !libOpen());

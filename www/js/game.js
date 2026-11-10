@@ -814,8 +814,8 @@ function bCasa(k) {
   R(-12, -16, 24, 16, cols[k % 3]); R(-14, -20, 28, 4, '#7a3a2a'); R(-10, -24, 20, 4, '#8a4a32'); R(-6, -27, 12, 3, '#7a3a2a');
   R(-3, -9, 6, 9, '#5a3a20'); R(5, -12, 4, 4, '#ffd870');
 }
-function smith(t, hit) {
-  const up = hit > 0 ? Math.sin(hit * 20) > 0 : Math.floor(t * 2) % 2 === 0;
+function smith(t, down) {
+  const up = !down;
   R(-3, -10, 3, 10, '#3a3a46'); R(1, -10, 3, 10, '#3a3a46');
   R(-4, -20, 9, 10, '#6a4a2a'); R(-3, -19, 7, 9, '#8a5a35');
   R(-3, -27, 7, 7, '#e0a878'); R(-3, -28, 7, 2, '#3a2a1e'); R(-4, -22, 9, 2, '#5a3a20');
@@ -823,52 +823,88 @@ function smith(t, hit) {
   if (up) { R(5, -30, 2, 10, '#6a4a2a'); R(3, -33, 6, 4, '#5a5a66'); }
   else { R(5, -20, 8, 2, '#6a4a2a'); R(11, -22, 5, 6, '#5a5a66'); }
 }
-let vBg = null;
-export function drawVillage(canvas, opts) {
-  const c = canvas.getContext('2d'); c.setTransform(2, 0, 0, 2, 0, 0); c.imageSmoothingEnabled = false;
+// Desenhos da vila guardados prontos: o contorno e a luz são calculados uma vez só,
+// e cada quadro só cola as imagens (fica leve em celular simples).
+const VC = new Map();
+export const clearVillageCache = () => VC.clear();
+function cached(key, fn) {
+  let e = VC.get(key);
+  if (e) return e;
+  pix(fn);
+  const b = bbox || { x: BOX, y: BOY, w: 1, h: 1 };
+  const cv = document.createElement('canvas'); cv.width = b.w; cv.height = b.h;
+  cv.getContext('2d').drawImage(buf, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+  e = { cv, bx: b.x - BOX, by: b.y - BOY, w: b.w, h: b.h };
+  if (VC.size > 160) VC.clear();
+  VC.set(key, e);
+  return e;
+}
+function put(e, x, y, s = 1, a = 1) {
+  ctx.globalAlpha = a;
+  ctx.drawImage(e.cv, Math.round(x + e.bx * s), Math.round(y + e.by * s), e.w * s, e.h * s);
+  ctx.globalAlpha = 1;
+}
+function villageBg(phase, nh) {
+  const key = 'bg|' + phase + '|' + nh;
+  let e = VC.get(key); if (e) return e;
+  const cv = document.createElement('canvas'); cv.width = W * 2; cv.height = H * 2;
+  const c = cv.getContext('2d'); c.setTransform(2, 0, 0, 2, 0, 0); c.imageSmoothingEnabled = false;
   const prev = ctx; ctx = c; setCtx(c);
-  const t = opts.t, sc = scenery('floresta');
+  const sc = scenery('floresta');
   c.drawImage(sc.sky, 0, 0, W, H);
-  const ph = dayPhase();
-  if (ph === 'noite') { c.fillStyle = 'rgba(6,8,30,.45)'; c.fillRect(0, 0, W, H); }
-  else if (ph === 'dia') { c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(110,150,230,.55)'; c.fillRect(0, 0, W, H); c.restore(); }
+  if (phase === 'noite') { c.fillStyle = 'rgba(6,8,30,.45)'; c.fillRect(0, 0, W, H); }
+  else if (phase === 'dia') { c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(110,150,230,.55)'; c.fillRect(0, 0, W, H); c.restore(); }
   else { c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(230,120,70,.35)'; c.fillRect(0, 0, W, H); c.restore(); }
   c.drawImage(sc.far, 0, 0, W, H);
-  const nh = Math.min(6, 1 + Math.floor((S.level || 1) / 4));
   const HPOS = [24, 92, 160, 228, 296, 58];
-  for (let i = 0; i < nh; i++) { pix(() => bCasa(i)); blit(HPOS[i], GY - 30, 0.8, 0.9, c); }
+  for (let i = 0; i < nh; i++) put(cached('casa' + i, () => bCasa(i)), HPOS[i], GY - 30, 0.8, 0.9);
   c.fillStyle = 'rgba(20,26,54,.25)'; c.fillRect(0, 0, W, GY - 28);
   c.drawImage(sc.ground, 0, 0, W, H);
   R(0, GY, W, 3, '#b89a70'); R(0, GY + 3, W, 1, '#8a7050');
+  ctx = prev; if (ctx) setCtx(ctx);
+  e = { cv }; VC.set(key, e);
+  return e;
+}
+export function drawVillage(canvas, opts) {
+  const c = canvas.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
+  const prev = ctx; ctx = c; setCtx(c);
+  const t = opts.t;
+  c.drawImage(villageBg(dayPhase(), Math.min(6, 1 + Math.floor((S.level || 1) / 4))).cv, 0, 0);
+  c.setTransform(2, 0, 0, 2, 0, 0);
   const spots = opts.spots = [];
   const B = [
-    { id: 'loja', x: 44, fn: () => bLoja(t), label: 'LOJA', open: true },
-    { id: 'ferreiro', x: 124, fn: () => bFerreiro(t), label: 'FERREIRO', open: true },
-    { id: 'mercador', x: 204, fn: () => bMercador(t, opts.merc), label: opts.merc ? 'MERCADOR' : 'NÍVEL 3', open: opts.merc },
-    { id: 'biblioteca', x: 278, fn: () => bBiblioteca(t, opts.lib), label: opts.lib ? 'BIBLIOTECA' : '1º MINI-CHEFÃO', open: opts.lib }
+    { id: 'loja', x: 44, k: 'loja', fn: () => bLoja(0), label: 'LOJA', open: true },
+    { id: 'ferreiro', x: 124, k: 'ferreiro', fn: () => bFerreiro(0), label: 'FERREIRO', open: true },
+    { id: 'mercador', x: 204, k: 'merc' + !!opts.merc, fn: () => bMercador(0, opts.merc), label: opts.merc ? 'MERCADOR' : 'NÍVEL 3', open: opts.merc },
+    { id: 'biblioteca', x: 278, k: 'lib' + !!opts.lib, fn: () => bBiblioteca(0, opts.lib), label: opts.lib ? 'BIBLIOTECA' : '1º MINI-CHEFÃO', open: opts.lib }
   ];
   for (const b of B) {
-    pix(b.fn); blit(b.x, GY, 1, 1, c);
-    const w = bbox ? bbox.w : 50, h = bbox ? bbox.h : 50;
-    spots.push({ id: b.id, x0: b.x - w / 2, x1: b.x + w / 2, y0: GY - h, y1: GY + 10, open: b.open });
+    const e = cached(b.k, b.fn); put(e, b.x, GY);
+    spots.push({ id: b.id, x0: b.x - e.w / 2, x1: b.x + e.w / 2, y0: GY - e.h, y1: GY + 10, open: b.open });
     const sel = opts.sel === b.id;
     txt(b.label, b.x, GY + 13, sel ? '#ffe08a' : b.open ? '#eef0ff' : '#a3aad6', 7);
-    if (sel) { const bob = Math.round(Math.sin(t * 5) * 2); R(b.x - 2, GY - h - 10 + bob, 5, 3, '#ffe08a'); R(b.x - 1, GY - h - 7 + bob, 3, 2, '#ffe08a'); R(b.x, GY - h - 5 + bob, 1, 1, '#ffe08a'); }
+    if (sel) { const bob = Math.round(Math.sin(t * 5) * 2), h = e.h; R(b.x - 2, GY - h - 10 + bob, 5, 3, '#ffe08a'); R(b.x - 1, GY - h - 7 + bob, 3, 2, '#ffe08a'); R(b.x, GY - h - 5 + bob, 1, 1, '#ffe08a'); }
   }
+  // fogo da fornalha (por cima do desenho guardado)
+  const f = Math.floor(t * 8) % 3;
+  R(124 - 16, GY - 12 - f, 10, 8 + f, '#e8502a'); R(124 - 14, GY - 14 - f, 6, 6, '#ffb040'); R(124 - 12, GY - 10, 2, 3, '#fff0a0');
   // fumaça da chaminé
-  for (let i = 0; i < 4; i++) { const p = (t * 0.5 + i / 4) % 1; c.globalAlpha = 0.5 * (1 - p); R(138 + Math.sin(p * 6 + i) * 3, GY - 54 - p * 30, 3, 3, '#9aa0b8'); }
+  for (let i = 0; i < 4; i++) { const q = (t * 0.5 + i / 4) % 1; c.globalAlpha = 0.5 * (1 - q); R(138 + Math.sin(q * 6 + i) * 3, GY - 54 - q * 30, 3, 3, '#9aa0b8'); }
   c.globalAlpha = 1;
   // ferreiro na bigorna
   R(150, GY - 6, 10, 3, '#3a3a46'); R(152, GY - 3, 6, 3, '#2a2a34'); R(149, GY - 8, 12, 2, '#5a5a66');
-  pix(() => smith(t, opts.hit || 0)); blit(144, GY, 1, 1, c);
-  if (opts.hit > 0) for (let i = 0; i < 5; i++) R(156 + Math.round(rnd(Math.floor(t * 30) + i) * 10 - 5), GY - 10 - Math.round(rnd(Math.floor(t * 30) + i + 9) * 8), 1, 1, i % 2 ? '#ffe04a' : '#ff8a2a');
+  const hit = opts.hit || 0, up = hit > 0 ? Math.sin(hit * 20) > 0 : Math.floor(t * 2) % 2 === 0;
+  put(cached('smith' + up, () => smith(0, up ? 0 : 1)), 144, GY);
+  if (hit > 0) for (let i = 0; i < 5; i++) R(156 + Math.round(rnd(Math.floor(t * 30) + i) * 10 - 5), GY - 10 - Math.round(rnd(Math.floor(t * 30) + i + 9) * 8), 1, 1, i % 2 ? '#ffe04a' : '#ff8a2a');
   // herói (e pet) em frente ao prédio escolhido
   const tgt = (B.find(b => b.id === opts.sel) || B[0]).x - 16;
-  opts.hx = opts.hx == null ? tgt : opts.hx + Math.sign(tgt - opts.hx) * Math.min(Math.abs(tgt - opts.hx), 1.4);
-  const walking = Math.abs(tgt - opts.hx) > 0.5;
-  if (hasPet()) { pix(() => drawPet(S.pet, { t, walk: walking, sad: petSad(), sleep: false, atk: 0 })); blit(opts.hx - 16, GY + 4, [0.8, 1, 1.2][petStage().idx]); }
-  pix(() => drawHero({ ...heroLook(), x: 0, y: 0, walk: walking, step: Math.floor(t * 9) % 2, ang: 1.9, ext: 0, time: t }));
-  blit(opts.hx, GY + 4, 1, 1, c);
+  opts.hx = opts.hx == null ? tgt : opts.hx + Math.sign(tgt - opts.hx) * Math.min(Math.abs(tgt - opts.hx), 2.5);
+  const walking = Math.abs(tgt - opts.hx) > 0.5, step = walking ? Math.floor(t * 9) % 2 : 0;
+  if (hasPet()) {
+    const ph = Math.floor(t * 4) % 4, st = petStage().idx;
+    put(cached('pet|' + S.pet + '|' + walking + '|' + ph + '|' + petSad(), () => drawPet(S.pet, { t: ph / 4, walk: walking, sad: petSad(), sleep: false, atk: 0 })), opts.hx - 16, GY + 4, [0.8, 1, 1.2][st]);
+  }
+  put(cached('hero|' + walking + '|' + step, () => drawHero({ ...heroLook(), x: 0, y: 0, walk: walking, step, ang: 1.9, ext: 0, time: 0.3 })), opts.hx, GY + 4);
   ctx = prev; if (ctx) setCtx(ctx);
 }
 

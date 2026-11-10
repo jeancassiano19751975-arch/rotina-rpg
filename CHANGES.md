@@ -1,3 +1,9 @@
+Versão 3.1: correções da Vila
+
+- A Vila ficou bem mais leve: o jogo não trava mais ao entrar no Ferreiro, os botões respondem na hora e dá para voltar para a Loja
+- A animação da Vila não some mais ao sair e voltar
+- Forjar e comprar: se faltar ouro, o jogo diz quanto falta (antes o botão só ficava apagado)
+
 Versão 3: vila, eventos, semana e Android
 
 - Vila: Loja (veja e escolha o que vestir), Ferreiro (forja por peça), Mercador (capas e poções) e Biblioteca (bestiário)
