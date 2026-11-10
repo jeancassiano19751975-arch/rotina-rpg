@@ -1,8 +1,8 @@
 // Interface: HUD, abas, rotina, herói, conquistas, ajustes, toast e modal.
-import { S, save, today, addDays, parseDay, tMin, nowMin, newId, exportJSON, importJSON, resetAll } from './state.js';
-import { CLOTHES, CATS, ATTRS, DURATIONS, WEEKDAYS, WEEKDAY_NAMES, WEAPONS, ARMORS, FORGE_MAX, RELICS, ACHIEVEMENTS } from './data.js';
+import { S, save, today, addDays, parseDay, tMin, tGame, nowMin, newId, exportJSON, importJSON, resetAll } from './state.js';
+import { CLOTHES, CATS, ATTRS, DURATIONS, WEEKDAYS, WEEKDAY_NAMES, WEAPONS, ARMOR_SETS, PIECES, SHIELDS, PETS, PET_STAGES, FORGE_MAX, RELICS, ACHIEVEMENTS } from './data.js';
 import {
-  fmt, fmtTime, xpNeed, heroStats, weaponTier, armorTier, forgeCost, doForge, tasksOn, isRest, baseXP, lateInfo,
+  fmt, fmtTime, xpNeed, petStage, petSad, hasPet, heroStats, weaponTier, armorTier, shieldTier, pieceTier, forgeCost, doForge, tasksOn, isRest, baseXP, lateInfo,
   predictXP, completeTask, toggleRest, restCountWeek, furyOn, tiredOn, restedOn
 } from './rules.js';
 import { FOCUS_MAX } from './mentor.js';
@@ -59,7 +59,7 @@ export function renderNext() {
   }
   const lg = S.log[k] || {}, n = nowMin();
   const list = tasksOn(k).filter(t => !lg[t.id]);
-  const t = list.find(x => tMin(x.time) >= n - 30) || list[0];
+  const t = list.find(x => tGame(x.time) >= n - 30) || list[0];
   $('next-eye').textContent = 'Próxima missão';
   if (!t) {
     const all = tasksOn(k);
@@ -68,7 +68,7 @@ export function renderNext() {
     $('next-in').textContent = ''; $('next-xp').textContent = all.length ? 'Descanse, guerreiro.' : 'Adicione missões na aba Rotina.';
     return;
   }
-  const d = tMin(t.time) - n;
+  const d = tGame(t.time) - n;
   $('next-time').textContent = t.time; $('next-name').textContent = t.name;
   $('next-in').textContent = d > 0 ? 'em ' + (d >= 60 ? Math.floor(d / 60) + 'h ' + (d % 60) + 'min' : d + ' min') : d >= -30 ? 'agora' : 'atrasada ' + Math.abs(d) + ' min';
   $('next-xp').textContent = CATS[t.cat].n + ' · ' + t.dur + ' min · vale ' + predictXP(t) + ' XP agora';
@@ -181,21 +181,36 @@ export function renderRoutine() {
 // ---------- Herói ----------
 export function renderHero() {
   const p = $('p-heroi'), Hs = heroStats();
-  const wt = weaponTier(), at = armorTier(), Wp = WEAPONS[wt], Ar = ARMORS[at];
-  const nW = WEAPONS[wt + 1], nA = ARMORS[at + 1];
+  const wt = weaponTier(), Wp = WEAPONS[wt], nW = WEAPONS[wt + 1];
+  const st = shieldTier(), Sh = st >= 0 ? SHIELDS[st] : null, nS = SHIELDS[st + 1];
   const swW = 'linear-gradient(135deg,' + Wp.edge + ' 0 40%,' + Wp.blade + ' 40% 70%,' + Wp.guard + ' 70%)';
-  const arC = Ar.main || CLOTHES[S.hero.cloth] || '#3d7bd9';
-  const swA = 'linear-gradient(180deg,' + (Ar.helm || arC) + ' 0 30%,' + arC + ' 30% 70%,' + (Ar.dark || '#2a2a3a') + ' 70%)';
+  const cloth = CLOTHES[S.hero.cloth] || '#3d7bd9';
   const forgeBtn = k => {
-    if (S.forge[k] >= FORGE_MAX) return '<span class="chip ok">+' + FORGE_MAX + ' máx</span>';
+    const f = S.forge[k] || 0;
+    if (f >= FORGE_MAX) return '<span class="chip ok">+' + FORGE_MAX + ' máx</span>';
     const c = forgeCost(k);
-    return '<button class="btn sm' + (S.gold >= c ? ' gold-btn' : '') + '" type="button" data-forge="' + k + '"' + (S.gold >= c ? '' : ' disabled') + '>Forjar +' + (S.forge[k] + 1) + ' · ' + fmt(c) + '</button>';
+    return '<button class="btn sm' + (S.gold >= c ? ' gold-btn' : '') + '" type="button" data-forge="' + k + '"' + (S.gold >= c ? '' : ' disabled') + '>Forjar +' + (f + 1) + ' · ' + fmt(c) + '</button>';
   };
+  const row = (sw, name, sub, act) => '<div class="eq"><span class="sw" style="background:' + sw + '"></span><div><b>' + name + '</b><small>' + sub + '</small></div>' + (act || '<span></span>') + '</div>';
   let html = '<p class="hint">Ataque ' + fmt(Hs.atk) + ' · Defesa ' + fmt(Hs.def) + ' · Vida ' + fmt(Hs.maxHp) + ' · Crítico ' + Math.round(Hs.crit * 100) + '%' +
+    (Hs.block ? ' · Bloqueio ' + Math.round(Hs.block * 100) + '%' : '') +
     (furyOn() ? ' · <b style="color:var(--blood)">Fúria</b>' : '') + (tiredOn() ? ' · <b style="color:var(--mana)">Cansado</b>' : '') + '</p>';
-  html += '<span class="h3">Equipamento</span>';
-  html += '<div class="eq"><span class="sw" style="background:' + swW + '"></span><div><b>' + Wp.n + (S.forge.w ? ' +' + S.forge.w : '') + '</b><small>+' + Wp.atk + ' ataque' + (nW ? ' · próxima: ' + nW.n + ' no nível ' + nW.lvl : ' · melhor arma') + '</small></div>' + forgeBtn('w') + '</div>';
-  html += '<div class="eq"><span class="sw" style="background:' + swA + '"></span><div><b>' + Ar.n + (S.forge.a ? ' +' + S.forge.a : '') + '</b><small>+' + Ar.def + ' defesa, +' + Ar.hp + ' vida' + (nA ? ' · próxima: ' + nA.n + ' no nível ' + nA.lvl : ' · melhor armadura') + '</small></div>' + forgeBtn('a') + '</div>';
+  html += '<span class="h3">Arma e escudo</span>';
+  html += row(swW, Wp.n + (S.forge.w ? ' +' + S.forge.w : ''), '+' + Wp.atk + ' ataque' + (nW ? ' · próxima: ' + nW.n + ' no nível ' + nW.lvl : ' · melhor arma'), forgeBtn('w'));
+  html += Sh
+    ? row('radial-gradient(circle at 50% 45%,' + Sh.emb + ' 0 18%,' + Sh.main + ' 20% 60%,' + Sh.rim + ' 62%)', Sh.n + (S.forge.s ? ' +' + S.forge.s : ''),
+        '+' + Sh.def + ' defesa · ' + Math.round(Hs.block * 100) + '% de bloqueio' + (nS ? ' · próximo: ' + nS.n + ' no nível ' + nS.lvl : ' · melhor escudo'), forgeBtn('s'))
+    : row('repeating-linear-gradient(45deg,var(--shadow) 0 4px,var(--panel) 4px 8px)', 'Sem escudo', 'O primeiro escudo chega no nível ' + SHIELDS[0].lvl + '. Ele bloqueia golpes e dá o golpe de escudo.');
+  html += '<span class="h3">Armadura</span>';
+  PIECES.forEach((pc, i) => {
+    const t = pieceTier(i), A = ARMOR_SETS[t], nx = ARMOR_SETS[t + 1];
+    const c1 = A.main || (i === 1 ? cloth : '#5a4632'), c2 = A.dark || '#2a2a3a';
+    const name = A.names[i] + (i === 1 && S.forge.a && t > 0 ? ' +' + S.forge.a : '');
+    const sub = (t ? '+' + Math.round(A.def * pc.share * 10) / 10 + ' defesa, +' + Math.round(A.hp * pc.share) + ' vida' : 'Sem proteção') +
+      (nx ? ' · próxima: ' + nx.names[i] + ' no nível ' + nx.lvl[i] : ' · a melhor');
+    html += row('linear-gradient(180deg,' + (A.light || c1) + ' 0 25%,' + c1 + ' 25% 70%,' + c2 + ' 70%)', name, sub, i === 1 ? forgeBtn('a') : '');
+  });
+  html += '<p class="hint">A forja do peitoral fortalece a armadura inteira.</p>';
   html += '<p class="hint">Equipamento novo só vem subindo de nível, com a rotina. O ouro dos monstros serve para forjar: cada +1 deixa a peça 15% mais forte. Peça nova começa do +0.</p>';
 
   html += '<span class="h3">Atributos</span><p class="hint">Cada categoria de missão fortalece um atributo.</p><div class="attr-list">';
@@ -206,6 +221,21 @@ export function renderHero() {
       '<p class="hint" style="margin-top:-4px">' + src[k] + ' → ' + a.d + '</p>';
   }
   html += '</div>';
+
+  html += '<span class="h3">Pet</span>';
+  const pets = S.pets || {};
+  if (!Object.keys(pets).length) html += '<p class="hint">Seu primeiro pet, o Lobinho, chega num ovo quando você fizer <b>3 dias perfeitos seguidos</b>.</p>';
+  else if (hasPet()) {
+    const st = petStage(), nx = PET_STAGES[st.idx + 1], sad = petSad();
+    html += '<div class="eq"><span class="sw" style="background:' + (sad ? 'var(--mana)' : 'var(--gold)') + '"></span><div><b>' + esc(pets[S.pet].name) + '</b><small>' + PETS[S.pet].n + ' · ' + st.n +
+      (nx ? ' (' + st.days + '/' + nx.from + ' dias perfeitos para virar ' + nx.n + ')' : ' · fase final') + ' · ' + (sad ? 'Triste: a sequência quebrou e ele não ajuda até você fazer um dia perfeito' : 'Feliz') + '</small><small>' + PETS[S.pet].d + '</small></div><span></span></div>';
+    html += '<div class="form-acts"><input id="pet-name" class="pick" style="flex:1;min-width:0" maxlength="16" value="' + esc(pets[S.pet].name) + '" aria-label="Nome do pet"><button class="btn sm" type="button" id="pet-save">Salvar nome</button></div>';
+  }
+  html += '<div class="relics">' + Object.entries(PETS).map(([id, P]) => {
+    const got = !!pets[id], on = S.pet === id;
+    return '<div class="relic" style="' + (got ? '' : 'opacity:.55;border-color:var(--line)') + '"><b>' + (got ? esc(pets[id].name) : P.n) + '</b><span>' + (got ? P.d : 'Como ganhar: ' + P.how) + '</span>' +
+      (got ? (on ? '<span class="chip ok" style="justify-self:start">Com você</span>' : '<button class="btn sm" type="button" data-pet="' + id + '" style="justify-self:start">Levar este</button>') : '') + '</div>';
+  }).join('') + '</div>';
 
   html += '<span class="h3">Relíquias</span>';
   html += S.relics.length ? '<div class="relics">' + S.relics.map(r => '<div class="relic"><b>' + RELICS[r].n + '</b><span>' + RELICS[r].d + '</span></div>').join('') + '</div>'
@@ -222,6 +252,8 @@ export function renderHero() {
     if (r.error) toast(r.error); else { toast('Forjado! Agora é +' + r.level); renderAll(); }
   });
   const ts = $('title-sel'); if (ts) ts.onchange = () => { S.title = ts.value; save(); renderHUD(); };
+  p.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => { S.pet = b.dataset.pet; save(); toast(S.pets[S.pet].name + ' vai com você'); renderHero(); });
+  const pn = $('pet-save'); if (pn) pn.onclick = () => { const v = $('pet-name').value.trim(); if (v) { S.pets[S.pet].name = v; save(); toast('Nome salvo'); renderHero(); } };
 }
 
 // ---------- Conquistas ----------

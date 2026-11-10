@@ -190,3 +190,24 @@ canvas#scene { display: block; width: 100%; height: auto; aspect-ratio: 320/150;
 .chip.focus { border-color: var(--gold); color: var(--gold); }
 .toggle input { width: 20px; height: 20px; accent-color: var(--gold); flex: none; }
 .toggle span { font-size: 13px; color: var(--muted); }
+
+/* Cena do jogo fixa no topo: só a parte de baixo rola */
+.top-fixed { position: sticky; top: 0; z-index: 8; display: grid; gap: 8px; background: var(--sky); padding-block: 4px 8px; margin-top: -4px; }
+.top-fixed::before { content: ""; position: absolute; inset: -40px -16px 0; background: var(--sky); z-index: -1; }
+@media (max-width: 919px) {
+  .hud { padding: 6px 10px; gap: 10px; }
+  .lvl { min-width: 46px; padding: 2px 4px; }
+  .lvl b { font-size: 22px; }
+  .lvl span { font-size: 9px; }
+  .who b { font-size: 15px; }
+  .gold { font-size: 16px; }
+  .bar { height: 10px; }
+}
+@media (max-width: 919px) {
+  /* a coluna de cima "se desfaz" para a cena ficar fixa durante a página inteira */
+  .app > .col:first-child { display: contents; }
+}
+@media (min-width: 920px) {
+  .app > .col:first-child { position: sticky; top: 0; }
+  .top-fixed { position: static; }
+}

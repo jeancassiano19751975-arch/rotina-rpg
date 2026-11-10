@@ -6,10 +6,13 @@ export const dayKey = (d = new Date()) =>
   d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 export const parseDay = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
 export const addDays = (k, n) => { const d = parseDay(k); d.setDate(d.getDate() + n); return dayKey(d); };
-export const today = () => dayKey();
+// O dia do jogo vira à 1h da manhã: o que for marcado até 00:59 conta para o dia anterior.
+export const DAY_START = 60;
+export const today = () => dayKey(new Date(Date.now() - DAY_START * 60000));
 export const yesterday = () => addDays(today(), -1);
 export const tMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+export const nowMin = () => { const d = new Date(), m = d.getHours() * 60 + d.getMinutes(); return m < DAY_START ? m + 1440 : m; };
+export const tGame = t => { const m = tMin(t); return m < DAY_START ? m + 1440 : m; };   // horário dentro do dia do jogo
 // início da semana (segunda) de um dia
 export const weekStart = k => { const d = parseDay(k); const wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return dayKey(d); };
 
@@ -33,8 +36,8 @@ export function defaults() {
     xp: 0, level: 1, gold: 0,
     stage: 1, stageKills: 0, maxStage: 1, kills: 0, bossKills: 0, miniKills: 0, bosses: {},
     attrs: { for: 0, sab: 0, vit: 0, res: 0 },
-    forge: { w: 0, a: 0 }, seenWeapon: 0, seenArmor: 0,
-    relics: [], titles: [], title: '',
+    forge: { w: 0, a: 0, s: 0 }, seen: null,
+    relics: [], titles: [], title: '', pets: {}, pet: null, catDone: {}, sleepOnTime: 0,
     tasks: sampleTasks(), sample: true, profile: null,
     log: {},            // { 'AAAA-MM-DD': { taskId: { at, xp, late, verified } } }
     restDays: [], restPerWeek: 2, restedDay: '',
@@ -43,7 +46,7 @@ export function defaults() {
     tasksDone: 0, onTime: 0, earlyBird: 0,
     ach: {},
     phrasesOn: true, customPhrases: [],
-    day: dayKey(), lastSeen: 0, lastMorning: '', lastNight: ''
+    day: dayKey(new Date(Date.now() - 3600000)), lastSeen: 0, lastMorning: '', lastNight: ''
   };
 }
 

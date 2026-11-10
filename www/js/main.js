@@ -1,8 +1,8 @@
 // Inicialização: carrega o estado, roda a primeira abertura, liga jogo, interface e notificações.
 import { S, bus, load, save, today, nowMin } from './state.js';
 import { CATS, ATTRS } from './data.js';
-import { rollover, offlineProgress, completeTask, isRest, tasksOn, weekRate, fmt } from './rules.js';
-import { startGame, float, burst, banner, queueChest, fullHeal, shakeScreen } from './game.js';
+import { migrateGear, checkAch, rollover, offlineProgress, completeTask, isRest, tasksOn, weekRate, fmt } from './rules.js';
+import { startGame, float, burst, banner, queueChest, fullHeal, shakeScreen, petCheer } from './game.js';
 import { GY } from './sprites.js';
 import { renderAll, renderHUD, renderNext, initTabs, onChange, toast, modal, tick, refreshPerms } from './ui.js';
 import { runOnboarding } from './onboarding.js';
@@ -38,6 +38,7 @@ bus.on('task-done', ev => {
   burst(HX, GY - 14, ev.late ? '#7ab8ff' : '#f2c14e', 16);
   float(HX + 18, GY - 30, '+' + ATTRS[CATS[ev.t.cat].attr].n, '#f2c14e');
   sfx.done();
+  petCheer();
   toast(phrase(ev.late ? 'atraso' : 'feito') || ('Missão cumprida! +' + ev.xp + ' XP'));
   if (ev.perfect) {
     setTimeout(() => toast('Dia perfeito! Sequência de ' + S.streak + ' dia(s)'), 300);
@@ -47,6 +48,7 @@ bus.on('task-done', ev => {
 });
 bus.on('levelup', lv => { banner('NÍVEL ' + lv + '!', '#f2c14e'); burst(HX, GY - 14, '#ffe08a', 26); fullHeal(); sfx.level(); toast(phrase('nivel') || 'Nível ' + lv + '!'); renderHUD(); });
 bus.on('chest', ev => { queueChest(ev); setTimeout(sfx.chest, 1200); });
+bus.on('pet', pt => { queueChest({ kind: 'pet', item: pt, name: pt.n }); setTimeout(() => toast('Novo pet: ' + pt.n + '! ' + pt.d + '.'), 1500); });
 bus.on('ach', a => { toast('Conquista: ' + a.n + (a.title ? ' · título "' + a.title + '"' : '')); });
 bus.on('stage', st => { renderHUD(); });
 bus.on('kill', () => { renderHUD(); });
@@ -85,9 +87,11 @@ function dayPhrases() {
 // ---------- boot ----------
 async function boot() {
   load();
+  migrateGear();
   rollover();
   if (!S.onboarded) await runOnboarding();
   initTabs();
+  checkAch();
   const away = offlineProgress();
   startGame(document.getElementById('scene'));
   renderAll();

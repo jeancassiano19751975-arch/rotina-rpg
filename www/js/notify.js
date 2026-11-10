@@ -52,6 +52,7 @@ export async function reschedule() {
       for (const t of tasksOn(k)) {
         if (lg[t.id]) continue;
         const at = new Date(base); const m = tMin(t.time); at.setHours(Math.floor(m / 60), m % 60, 0, 0);
+        if (m < 60) at.setDate(at.getDate() + 1);   // antes da 1h = madrugada do dia seguinte
         if (at <= now) continue;
         list.push({
           id: hash(t.id + k) % 2000000000,

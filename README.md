@@ -1,8 +1,19 @@
-# Rotina RPG — Versão 1
+# Rotina RPG — Versão 1.1
 
 Cumpra sua rotina na vida real e seu herói fica mais forte no jogo.
 
-## O que já tem nesta versão
+## Novidades da 1.1
+- Visual estilo Terraria (desenhos originais): contorno colorido, luz e sombra, monstros se despedaçando
+- Herói com combos (corte, estocada, giro, salto no crítico, golpe de escudo), recuo e pose de vitória
+- Escudo (bloqueio) e armadura em 3 peças visíveis: capacete, peitoral, calças e botas
+- 7 biomas: Floresta, Deserto, Neve, Caverna, Pântano, Castelo Sombrio e Inferno, com 42 monstros e Modo Pesadelo depois da fase 70
+- Monstros com jeitos de lutar: rápidos, à distância, teia, rouba vida, gelo, fogo, regeneração, saem do chão
+- 7 chefões grandes e animados, até o Dragão Ancestral (cospe fogo e se enfurece)
+- 6 pets: Lobinho, Coruja, Gatinho, Slime de Estimação, Morceguinho e Dragãozinho, com evolução, humor, nome e habilidade
+- Cena do jogo fixa no topo no celular
+- O dia do jogo vira à 1h da manhã
+
+## O que já tem desde a 1.0
 - Criação do herói (nome, pele, cabelo, roupa) e tela de permissões na primeira abertura
 - Conselho do Mestre: perguntas sobre sua rotina (horários, tempo livre, objetivo, o que você adia, quanto treina) que montam as missões iniciais no seu nível
 - Missões de foco ⭐ (até 3): ficam com uma fatia maior dos 300 XP do dia; dá para refazer as perguntas em Ajustes
@@ -67,7 +78,9 @@ www/
     rules.js       regras: XP, atraso, descanso, atributos, forja, conquistas, offline
     phrases.js     frases motivacionais
     sprites.js     pixel art: herói, monstros, cenários, baú, fogueira
-    game.js        motor do combate e chefões
+    game.js        motor do combate, chefões e pets
+    monsters.js    desenho dos 42 monstros e dos chefões grandes
+    pets.js        desenho dos pets
     ui.js          telas e abas
     onboarding.js  primeira abertura
     mentor.js      Conselho do Mestre: perguntas e rotina sugerida
